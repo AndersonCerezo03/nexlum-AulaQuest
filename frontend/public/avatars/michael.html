@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HR Interview Coach</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#1b2430;font-family:'Segoe UI',sans-serif}
+  #ui{position:fixed;top:12px;left:50%;transform:translateX(-50%);color:#e8eef4;font-weight:700;letter-spacing:.4px;pointer-events:none;text-align:center;z-index:2}
+  #ui small{display:block;font-weight:400;opacity:.65;font-size:12px}
+  #panel{position:fixed;bottom:0;left:0;right:0;padding:12px;display:flex;flex-direction:column;gap:8px;align-items:center;z-index:2}
+  #subtitle{max-width:680px;background:rgba(255,255,255,.95);border-radius:14px;padding:10px 16px;color:#1f2c3a;font-size:15px;line-height:1.45;box-shadow:0 4px 18px rgba(0,0,0,.3);min-height:20px}
+  #controls{display:flex;gap:8px;width:100%;max-width:680px}
+  #micBtn{width:54px;height:54px;border-radius:50%;border:none;background:#2563eb;color:#fff;font-size:22px;cursor:pointer;flex-shrink:0;transition:.2s;box-shadow:0 4px 12px rgba(37,99,235,.5)}
+  #micBtn.listening{background:#dc2626;animation:pulse 1s infinite}
+  @keyframes pulse{50%{transform:scale(1.12)}}
+  #txt{flex:1;border:none;border-radius:27px;padding:0 18px;font-size:15px;background:rgba(255,255,255,.95);outline:none}
+  #sendBtn{height:54px;padding:0 22px;border:none;border-radius:27px;background:#2563eb;color:#fff;font-weight:600;cursor:pointer}
+  #status{font-size:12px;color:#aebfd0}
+  canvas{display:block}
+</style>
+</head>
+<body>
+<div id="ui">Michael Reed — HR Interviewer<small>Presiona 🎤 y habla en inglés · él te responde con voz</small></div>
+<div id="panel">
+  <div id="subtitle">Press the mic and say hello to start your job interview practice.</div>
+  <div id="controls">
+    <button id="micBtn" title="Hablar">🎤</button>
+    <input id="txt" placeholder="...o escribe en inglés y presiona Enter">
+    <button id="sendBtn">Enviar</button>
+  </div>
+  <div id="status"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============ ESCENA: encuadre tipo videollamada ============ */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x222e3d);
+scene.fog = new THREE.Fog(0x222e3d, 6, 12);
+
+const camera = new THREE.PerspectiveCamera(32, innerWidth/innerHeight, .1, 50);
+function frameCamera(){
+  // garantiza cabeza + hombros SIEMPRE visibles, sin importar tamaño de ventana
+  const aspect = innerWidth/innerHeight;
+  const dist = aspect < 1 ? 4.6 : (aspect < 1.5 ? 3.9 : 3.4);
+  camera.position.set(0, 1.52, dist);
+  camera.lookAt(0, 1.42, 0);
+  camera.aspect = aspect;
+  camera.updateProjectionMatrix();
+}
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+document.body.appendChild(renderer.domElement);
+frameCamera();
+
+/* fondo de oficina sutil */
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(20,12),
+  new THREE.MeshStandardMaterial({color:0x2b3a4d, roughness:1}));
+wall.position.set(0,2,-3.5); scene.add(wall);
+const panelW = new THREE.Mesh(new THREE.PlaneGeometry(3.2,2.0),
+  new THREE.MeshStandardMaterial({color:0x35495e, roughness:1}));
+panelW.position.set(-2.4,2.0,-3.45); scene.add(panelW);
+const winLight = new THREE.Mesh(new THREE.PlaneGeometry(1.6,2.4),
+  new THREE.MeshBasicMaterial({color:0x9fc4e8}));
+winLight.position.set(2.6,2.1,-3.45); scene.add(winLight);
+
+/* luces tipo retrato */
+scene.add(new THREE.HemisphereLight(0xdfe9f3, 0x8a6a50, .45));
+const key = new THREE.DirectionalLight(0xfff0dc, 1.25);
+key.position.set(2.5,3.5,3); key.castShadow = true; key.shadow.mapSize.set(2048,2048);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0x9ec4ee, .5); fill.position.set(-3,1.5,2.5); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xcfe2ff, .9); rim.position.set(-1,3,-4); scene.add(rim);
+
+/* ============ MATERIALES más realistas ============ */
+const skin   = new THREE.MeshStandardMaterial({color:0xd9a07c, roughness:.62, metalness:0});
+const skinD  = new THREE.MeshStandardMaterial({color:0xc99270, roughness:.66});
+const hairM  = new THREE.MeshStandardMaterial({color:0x251a12, roughness:.46, metalness:.08});
+const white  = new THREE.MeshStandardMaterial({color:0xf5f3ee, roughness:.12});
+const irisM  = new THREE.MeshStandardMaterial({color:0x46351f, roughness:.18, metalness:.15});
+const pupilM = new THREE.MeshStandardMaterial({color:0x080808, roughness:.05});
+const browM  = new THREE.MeshStandardMaterial({color:0x1c130c, roughness:.7});
+const lipM   = new THREE.MeshStandardMaterial({color:0xa3624f, roughness:.48});
+const innerM = new THREE.MeshStandardMaterial({color:0x3d1a14, roughness:.9});
+const teethM = new THREE.MeshStandardMaterial({color:0xf2efe6, roughness:.25});
+const suitM  = new THREE.MeshStandardMaterial({color:0x2a3950, roughness:.78});
+const suitD  = new THREE.MeshStandardMaterial({color:0x223047, roughness:.8});
+const shirtM = new THREE.MeshStandardMaterial({color:0xeef1f4, roughness:.55});
+const tieM   = new THREE.MeshStandardMaterial({color:0x7d1f2e, roughness:.42, metalness:.05});
+
+const avatar = new THREE.Group(); scene.add(avatar);
+
+/* ============ TORSO (busto, hombros anchos reales) ============ */
+const chest = new THREE.Mesh(new THREE.CylinderGeometry(.58,.66,1.1,48), suitM);
+chest.position.y = .42; chest.scale.z = .62; chest.castShadow = true;
+avatar.add(chest);
+const shoulderL = new THREE.Mesh(new THREE.SphereGeometry(.30,28,28), suitM);
+shoulderL.position.set(-.55,.92,0); shoulderL.scale.set(1.1,.75,.85); avatar.add(shoulderL);
+const shoulderR = shoulderL.clone(); shoulderR.position.x = .55; avatar.add(shoulderR);
+const upperChest = new THREE.Mesh(new THREE.SphereGeometry(.58,40,40,0,Math.PI*2,0,Math.PI/2), suitM);
+upperChest.position.y = .92; upperChest.scale.set(1.0,.45,.62); avatar.add(upperChest);
+
+/* cuello de camisa */
+[-1,1].forEach(s=>{
+  const col = new THREE.Mesh(new THREE.BoxGeometry(.16,.14,.05), shirtM);
+  col.position.set(.105*s,1.10,.205); col.rotation.z = .5*s; col.rotation.y = -.25*s;
+  avatar.add(col);
+});
+/* triángulo de camisa */
+const shirtV = new THREE.Mesh(new THREE.CylinderGeometry(.0,.20,.55,3), shirtM);
+shirtV.position.set(0,.86,.245); shirtV.rotation.y = Math.PI; shirtV.scale.z = .3;
+avatar.add(shirtV);
+/* corbata con nudo */
+const knot = new THREE.Mesh(new THREE.SphereGeometry(.065,16,16), tieM);
+knot.position.set(0,1.04,.26); knot.scale.set(1,.85,.6); avatar.add(knot);
+const tie = new THREE.Mesh(new THREE.BoxGeometry(.105,.55,.035), tieM);
+tie.position.set(0,.72,.275); tie.rotation.x = .05; avatar.add(tie);
+const tieTip = new THREE.Mesh(new THREE.ConeGeometry(.075,.12,4), tieM);
+tieTip.position.set(0,.42,.28); tieTip.rotation.set(Math.PI,Math.PI/4,0); avatar.add(tieTip);
+/* solapas del saco */
+[-1,1].forEach(s=>{
+  const lap = new THREE.Mesh(new THREE.BoxGeometry(.15,.52,.04), suitD);
+  lap.position.set(.17*s,.83,.27); lap.rotation.z = .30*s; lap.rotation.y = -.18*s;
+  avatar.add(lap);
+});
+
+/* ============ CUELLO Y CABEZA REALISTA ============ */
+const neck = new THREE.Mesh(new THREE.CylinderGeometry(.135,.165,.30,24), skinD);
+neck.position.y = 1.18; avatar.add(neck);
+
+const head = new THREE.Group(); head.position.y = 1.52; avatar.add(head);
+
+/* cráneo ovalado + frente */
+const skull = new THREE.Mesh(new THREE.SphereGeometry(.40,64,64), skin);
+skull.scale.set(.82,1.0,.88); skull.position.y = .04; skull.castShadow = true;
+head.add(skull);
+/* mejillas y mandíbula que estrechan hacia el mentón */
+const midFace = new THREE.Mesh(new THREE.SphereGeometry(.34,48,48), skin);
+midFace.position.set(0,-.10,.03); midFace.scale.set(.92,.95,.92); head.add(midFace);
+const jaw = new THREE.Mesh(new THREE.SphereGeometry(.27,40,40), skin);
+jaw.position.set(0,-.245,.05); jaw.scale.set(.95,.78,.9); head.add(jaw);
+const chin = new THREE.Mesh(new THREE.SphereGeometry(.115,24,24), skin);
+chin.position.set(0,-.345,.16); chin.scale.set(1.1,.8,.9); head.add(chin);
+
+/* orejas con forma */
+[-1,1].forEach(s=>{
+  const ear = new THREE.Mesh(new THREE.SphereGeometry(.075,20,20), skinD);
+  ear.position.set(.335*s,-.06,-.02); ear.scale.set(.35,1,.55); ear.rotation.y = .3*s;
+  head.add(ear);
+});
+
+/* nariz con puente y aletas */
+const bridge = new THREE.Mesh(new THREE.CylinderGeometry(.028,.048,.20,12), skin);
+bridge.position.set(0,-.06,.355); bridge.rotation.x = .42; head.add(bridge);
+const noseTip = new THREE.Mesh(new THREE.SphereGeometry(.058,20,20), skin);
+noseTip.position.set(0,-.155,.385); head.add(noseTip);
+[-1,1].forEach(s=>{
+  const ala = new THREE.Mesh(new THREE.SphereGeometry(.034,14,14), skinD);
+  ala.position.set(.048*s,-.168,.36); head.add(ala);
+});
+
+/* ojos */
+const eyes = [];
+[-1,1].forEach(s=>{
+  const eye = new THREE.Group(); eye.position.set(.145*s,.015,.315); head.add(eye);
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(.082,28,28), white);
+  ball.scale.set(1,.88,.55); eye.add(ball);
+  const ir = new THREE.Mesh(new THREE.SphereGeometry(.044,24,24), irisM);
+  ir.position.z = .042; ir.scale.z = .45; eye.add(ir);
+  const pu = new THREE.Mesh(new THREE.SphereGeometry(.020,14,14), pupilM);
+  pu.position.z = .063; pu.scale.z = .45; eye.add(pu);
+  const sh = new THREE.Mesh(new THREE.SphereGeometry(.009,8,8), new THREE.MeshBasicMaterial({color:0xffffff}));
+  sh.position.set(.016,.018,.075); eye.add(sh);
+  /* párpado superior fijo (mirada adulta, ojos semicerrados) */
+  const upperLid = new THREE.Mesh(new THREE.SphereGeometry(.090,24,24,0,Math.PI*2,0,Math.PI/2.6), skin);
+  upperLid.scale.set(1.02,.9,.6); upperLid.rotation.x = -.45; eye.add(upperLid);
+  /* párpado de parpadeo */
+  const lid = new THREE.Mesh(new THREE.SphereGeometry(.092,24,24,0,Math.PI*2,0,Math.PI/2), skin);
+  lid.scale.set(1.02,.9,.6); lid.rotation.x = -.15; lid.visible = false; eye.add(lid);
+  eyes.push({group:eye, lid});
+});
+
+/* cejas pobladas con ángulo */
+const brows = [];
+[-1,1].forEach(s=>{
+  const b = new THREE.Group(); b.position.set(.15*s,.125,.345); head.add(b);
+  const b1 = new THREE.Mesh(new THREE.BoxGeometry(.11,.026,.035), browM);
+  b1.rotation.z = -.10*s; b.add(b1);
+  const b2 = new THREE.Mesh(new THREE.BoxGeometry(.05,.022,.03), browM);
+  b2.position.set(-.07*s,-.012,0); b2.rotation.z = -.35*s; b.add(b2);
+  brows.push(b);
+});
+
+/* pelo corto profesional con raya lateral y línea de nacimiento */
+const hair = new THREE.Group(); head.add(hair);
+const cap = new THREE.Mesh(new THREE.SphereGeometry(.415,48,48,0,Math.PI*2,0,Math.PI/2.25), hairM);
+cap.scale.set(.84,.92,.90); cap.position.set(.01,.085,-.015); cap.rotation.set(-.10,0,.05);
+cap.castShadow = true; hair.add(cap);
+/* flequillo peinado al lado */
+const fringe = new THREE.Mesh(new THREE.SphereGeometry(.16,24,24), hairM);
+fringe.position.set(-.14,.27,.24); fringe.scale.set(1.5,.45,.8); fringe.rotation.z = .18;
+hair.add(fringe);
+/* patillas */
+[-1,1].forEach(s=>{
+  const sb = new THREE.Mesh(new THREE.BoxGeometry(.045,.16,.07), hairM);
+  sb.position.set(.325*s,-.04,.06); hair.add(sb);
+  const side = new THREE.Mesh(new THREE.SphereGeometry(.12,20,20), hairM);
+  side.position.set(.30*s,.10,-.06); side.scale.set(.55,1.1,1.0); hair.add(side);
+});
+/* nuca */
+const nape = new THREE.Mesh(new THREE.SphereGeometry(.36,32,32), hairM);
+nape.position.set(0,.02,-.16); nape.scale.set(.82,.9,.55); hair.add(nape);
+
+/* barba sombra de las 5pm */
+const stubble = new THREE.Mesh(new THREE.SphereGeometry(.275,36,36),
+  new THREE.MeshStandardMaterial({color:0x4a3527, roughness:.95, transparent:true, opacity:.22}));
+stubble.position.set(0,-.245,.05); stubble.scale.set(.96,.79,.91); head.add(stubble);
+
+/* boca realista con dientes + lip-sync */
+const mouthGrp = new THREE.Group(); mouthGrp.position.set(0,-.265,.315); head.add(mouthGrp);
+const mouthInner = new THREE.Mesh(new THREE.SphereGeometry(.062,20,20), innerM);
+mouthInner.scale.set(1.55,.18,.45); mouthGrp.add(mouthInner);
+const teeth = new THREE.Mesh(new THREE.BoxGeometry(.14,.022,.02), teethM);
+teeth.position.set(0,.012,.025); teeth.visible = false; mouthGrp.add(teeth);
+const lipTop = new THREE.Mesh(new THREE.BoxGeometry(.175,.020,.035), lipM);
+lipTop.position.y = .022; mouthGrp.add(lipTop);
+const lipBot = new THREE.Mesh(new THREE.BoxGeometry(.155,.026,.04), lipM);
+lipBot.position.y = -.022; mouthGrp.add(lipBot);
+/* pliegues de sonrisa */
+[-1,1].forEach(s=>{
+  const crease = new THREE.Mesh(new THREE.CylinderGeometry(.006,.006,.09,8), skinD);
+  crease.position.set(.115*s,-.255,.30); crease.rotation.z = .5*s; head.add(crease);
+});
+
+/* sombra al piso */
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(10,10), new THREE.ShadowMaterial({opacity:.25}));
+floor.rotation.x = -Math.PI/2; floor.position.y = -.15; floor.receiveShadow = true;
+scene.add(floor);
+
+/* ============ ANIMACIÓN ============ */
+let mouse={x:0,y:0}, speaking=false, mouthOpen=0;
+addEventListener('mousemove', e=>{
+  mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1;
+});
+let blinkT=0, nextBlink=2.5;
+const clock = new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=clock.getDelta(), t=clock.elapsedTime;
+  /* respiración sutil */
+  avatar.position.y = Math.sin(t*1.1)*.012;
+  chest.scale.x = 1+Math.sin(t*1.1)*.008;
+  /* cabeza sigue cursor suavemente */
+  const lx = THREE.MathUtils.clamp(mouse.x*.32,-.32,.32);
+  const ly = THREE.MathUtils.clamp(mouse.y*.18,-.18,.18);
+  head.rotation.y += (lx-head.rotation.y)*.06;
+  head.rotation.x += (-ly-head.rotation.x)*.06;
+  head.rotation.z = Math.sin(t*.5)*.012;
+  eyes.forEach(e=>{e.group.rotation.y=lx*.3; e.group.rotation.x=-ly*.3;});
+  /* lip-sync */
+  const target = speaking ? (.35+Math.abs(Math.sin(t*10.5))*.85+Math.random()*.15) : 0;
+  mouthOpen += (target-mouthOpen)*.32;
+  mouthInner.scale.y = .18 + mouthOpen*.62;
+  lipBot.position.y = -.022 - mouthOpen*.045;
+  jaw.position.y = -.245 - mouthOpen*.022;
+  chin.position.y = -.345 - mouthOpen*.022;
+  teeth.visible = mouthOpen > .35;
+  /* gesto al hablar */
+  if(speaking) head.rotation.x += Math.sin(t*2.2)*.008;
+  brows.forEach((b,i)=> b.position.y = .125 + (speaking? Math.sin(t*2.5+i*1.7)*.010 : 0));
+  /* parpadeo */
+  blinkT+=dt;
+  if(blinkT>nextBlink){
+    eyes.forEach(e=>e.lid.visible=true);
+    if(blinkT>nextBlink+.13){eyes.forEach(e=>e.lid.visible=false);blinkT=0;nextBlink=2.2+Math.random()*3.5;}
+  }
+  renderer.render(scene,camera);
+}
+animate();
+addEventListener('resize',()=>{frameCamera();renderer.setSize(innerWidth,innerHeight);});
+
+/* ============ PARLANTE (TTS) ============ */
+const subtitle=document.getElementById('subtitle');
+const statusEl=document.getElementById('status');
+let voiceEN=null;
+function pickVoice(){
+  const vs=speechSynthesis.getVoices();
+  voiceEN = vs.find(v=>/en[-_]US/i.test(v.lang)&&/male|david|guy|christopher|eric|mark/i.test(v.name))
+        || vs.find(v=>/en[-_]US/i.test(v.lang)) || vs.find(v=>/^en/i.test(v.lang)) || null;
+}
+speechSynthesis.onvoiceschanged=pickVoice; pickVoice();
+
+let avatarAudio=new Audio();
+function playAudio(b64,mime){
+  speechSynthesis.cancel();
+  avatarAudio.src='data:'+(mime||'audio/mpeg')+';base64,'+b64;
+  avatarAudio.playbackRate=0.97;
+  avatarAudio.onplay=()=>{speaking=true;};
+  avatarAudio.onended=()=>{speaking=false;};
+  avatarAudio.play().catch(()=>speak(subtitle.textContent));
+}
+function speak(text){
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='en-US'; if(voiceEN)u.voice=voiceEN;
+  u.rate=.95; u.pitch=.82;
+  u.onstart=()=>{speaking=true;};
+  u.onend=()=>{speaking=false;};
+  speechSynthesis.speak(u);
+}
+
+/* ============ IA ENTREVISTADOR ============ */
+const SYSTEM=`You are Michael Reed, a friendly but professional HR interviewer conducting a job interview practice session in ENGLISH for a Spanish-speaking learner.
+Rules:
+- ALWAYS respond in English only, 1-3 short sentences max (it will be spoken aloud).
+- Act like a real interview: greet, ask for introduction, then classic questions one at a time (strengths, weaknesses, experience, why this job, teamwork, salary expectations, questions for me).
+- React briefly to the candidate's answer before asking the next question.
+- If their English has a clear error, gently include the correction in one short phrase, then continue.
+- Never break character. Never use markdown.`;
+let history=[];
+const N8N_WEBHOOK_URL='http://localhost:5678/webhook/interview';
+async function askAI(userText){
+  statusEl.textContent='Michael está pensando...';
+  try{
+    const r=await fetch(N8N_WEBHOOK_URL,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:userText})
+    });
+    const raw=await r.text();
+    let reply=raw, audioB64='', audioMime='audio/mpeg';
+    try{ const d=JSON.parse(raw); const o=Array.isArray(d)?d[0]:d; reply=o.interviewer||o.reply||o.output||o.response||o.text||o.message||raw; audioB64=o.audio||''; audioMime=o.audioMimeType||'audio/mpeg'; }catch(_){}
+    reply=String(reply).trim()||"Sorry, could you repeat that?";
+    subtitle.textContent=reply;
+    statusEl.textContent='';
+    if(audioB64){ playAudio(audioB64,audioMime); } else { speak(reply); }
+  }catch(e){statusEl.textContent='No pude conectar con n8n. Verifica el webhook y CORS.';}
+}
+
+/* ============ MICRÓFONO (tú hablas) ============ */
+const micBtn=document.getElementById('micBtn');
+const txt=document.getElementById('txt');
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null, listening=false;
+if(SR){
+  rec=new SR();
+  rec.lang='en-US'; rec.interimResults=false; rec.maxAlternatives=1;
+  rec.onresult=e=>{
+    const said=e.results[0][0].transcript;
+    subtitle.textContent='🗣️ '+said;
+    askAI(said);
+  };
+  rec.onend=()=>{listening=false;micBtn.classList.remove('listening');};
+  rec.onerror=e=>{
+    listening=false;micBtn.classList.remove('listening');
+    statusEl.textContent=e.error==='not-allowed'
+      ?'Permite el micrófono o usa el cuadro de texto.'
+      :'No te escuché, intenta otra vez.';
+  };
+}else{
+  statusEl.textContent='Tu navegador no soporta micrófono — usa el texto (Chrome recomendado).';
+}
+micBtn.onclick=()=>{
+  if(!rec)return;
+  if(listening){rec.stop();return;}
+  speechSynthesis.cancel();speaking=false;
+  try{rec.start();listening=true;micBtn.classList.add('listening');statusEl.textContent='Escuchando... habla en inglés';}catch(_){}
+};
+function sendText(){
+  const v=txt.value.trim();if(!v)return;
+  txt.value='';subtitle.textContent='⌨️ '+v;
+  askAI(v);
+}
+document.getElementById('sendBtn').onclick=sendText;
+txt.addEventListener('keydown',e=>{if(e.key==='Enter')sendText();});
+
+window.addEventListener('load',()=>{ setTimeout(()=>{ askAI("START_INTERVIEW: You are a friendly job recruiter doing a job interview practice in English. First, warmly explain how the practice works, then ask: 'So, tell me a little about yourself.' Adapt to the student's level."); }, 600); });
+
+</script>
+</body>
+</html>
