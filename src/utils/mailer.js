@@ -1,33 +1,43 @@
-let nodemailer = null;
-try { nodemailer = require('nodemailer'); } catch (e) { /* no instalado: modo consola */ }
+// Mailer con Resend (API HTTP) — funciona en Render (no usa puertos SMTP bloqueados)
+// Mantiene las mismas funciones: enviarCorreo(to, subject, html) y plantilla(...)
 
-const SMTP_HOST = process.env.SMTP_HOST;
-const SMTP_PORT = process.env.SMTP_PORT;
-const SMTP_USER = process.env.SMTP_USER;
-const SMTP_PASS = process.env.SMTP_PASS;
-const FROM      = process.env.MAIL_FROM || 'AulaQuest <no-reply@aulaquest.com>';
-
-let transporter = null;
-if (nodemailer && SMTP_HOST && SMTP_USER && SMTP_PASS) {
-  transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT) || 587,
-    secure: Number(SMTP_PORT) === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-  });
-}
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+// Remitente: si no verificas dominio, Resend solo permite onboarding@resend.dev
+const FROM = process.env.MAIL_FROM || 'AulaQuest <onboarding@resend.dev>';
 
 async function enviarCorreo(to, subject, html) {
-  if (transporter) {
-    await transporter.sendMail({ from: FROM, to: to, subject: subject, html: html });
-    console.log('📧  Correo enviado a ' + to + ' — ' + subject);
-    return { sent: true };
+  // Si hay API key de Resend, envia por su API
+  if (RESEND_API_KEY) {
+    try {
+      const resp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + RESEND_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ from: FROM, to: [to], subject: subject, html: html }),
+      });
+
+      if (resp.ok) {
+        console.log('📧  Correo enviado a ' + to + ' — ' + subject);
+        return { sent: true };
+      } else {
+        const errText = await resp.text();
+        console.error('❌ Resend error (' + resp.status + '): ' + errText);
+        return { sent: false, error: errText };
+      }
+    } catch (e) {
+      console.error('❌ Error enviando con Resend: ' + e.message);
+      return { sent: false, error: e.message };
+    }
   }
-  console.log('\n================ CORREO (modo dev, sin SMTP) ================');
+
+  // Sin API key: modo consola (desarrollo)
+  console.log('\n================ CORREO (modo dev, sin RESEND_API_KEY) ================');
   console.log('Para:    ' + to);
   console.log('Asunto:  ' + subject);
   console.log('Cuerpo:  ' + html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
-  console.log('============================================================\n');
+  console.log('======================================================================\n');
   return { sent: false, dev: true };
 }
 
