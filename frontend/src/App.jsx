@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-const API = 'http://localhost:5001';
+const API = 'https://nexlum-aulaquest.onrender.com';
 const authH = (t) => ({ 'Content-Type':'application/json', 'Authorization':'Bearer '+t });
 const clean = (s) => s.toLowerCase().trim().replace(/[^a-z\s]/g,'');
 
@@ -158,8 +158,8 @@ async function alexSpeakBilingual(enText, esText, token, onEnd) {
     const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
 
     const [rEn, rEs] = await Promise.all([
-      fetch('http://localhost:5001/api/tts/speak',    { method:'POST', headers, body: JSON.stringify({ text: enText }) }),
-      fetch('http://localhost:5001/api/tts/speak-es', { method:'POST', headers, body: JSON.stringify({ text: esText }) }),
+      fetch('https://nexlum-aulaquest.onrender.com/api/tts/speak',    { method:'POST', headers, body: JSON.stringify({ text: enText }) }),
+      fetch('https://nexlum-aulaquest.onrender.com/api/tts/speak-es', { method:'POST', headers, body: JSON.stringify({ text: esText }) }),
     ]);
 
     if (!rEn.ok || !rEs.ok) { fallback(); return; }
@@ -232,7 +232,7 @@ function alexSpeak(text, rate, onEnd) {
   }
 
   // Llamar al backend ElevenLabs
-  fetch('http://localhost:5001/api/tts/speak', {
+  fetch('/https://nexlum-aulaquest.onrender.comapi/tts/speak', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
     body: JSON.stringify({ text }),
@@ -917,7 +917,7 @@ function InterviewerCard({ cfg, selected, onSelect }) {
 
 
 function JobInterview({ token, user, onBack }) {
-  const N8N_URL = 'http://localhost:5001/api/interview/message';
+  const N8N_URL = 'https://nexlum-aulaquest.onrender.com/api/interview/message';
   const [jobTitle,  setJobTitle]  = useState('Software Developer');
   const [level,     setLevel]     = useState('mid');
   const [phase,     setPhase]     = useState('setup');
@@ -1489,7 +1489,7 @@ function MemoryGame({ nivel, vocabData, onBack }) {
 
 // ─── MINIJUEGO: LLUVIA DE PALABRAS ───────────────────────────────────────────
 function WordRain({ nivel, token, vocabData, onBack }) {
-  const API = 'http://localhost:5001';
+  const API = 'https://nexlum-aulaquest.onrender.com';
   const authH = (t) => ({ Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' });
 
   const [words,      setWords]      = useState([]);   // palabras cayendo [{id,en,es,x,y,speed,answered}]
@@ -2637,7 +2637,7 @@ function CrisisRoomGame({ onBack }) {
 
 
 // ===== ENTREVISTA C2 — Panel de ondas conectado a n8n (webhook fijo y oculto) =====
-const N8N_WEBHOOK = 'http://localhost:5001/api/interview/message';
+const N8N_WEBHOOK = 'https://nexlum-aulaquest.onrender.com/api/interview/message';
 function EntrevistaPanel({ token, user, onBack, persona }) {
   const cvRef = useRef(null);
   const audioRef = useRef(null);
@@ -3899,7 +3899,7 @@ const handleAuth = async(e) => {
                   window.speechSynthesis&&window.speechSynthesis.cancel();
                   const tok=window._alexToken||token||'';
                   try {
-                    const r=await fetch('http://localhost:5001/api/tts/speak-slow',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({text:word.en})});
+                    const r=await fetch('https://nexlum-aulaquest.onrender.com/api/tts/speak-slow',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({text:word.en})});
                     if(r.ok){const blob=await r.blob();const url=URL.createObjectURL(blob);const a=new Audio(url);_currentAudio=a;a.play();}
                     else throw new Error();
                   } catch {
