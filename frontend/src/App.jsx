@@ -70,10 +70,12 @@ const KF = `
   @keyframes pulse-glow { 0%,100%{opacity:.06} 50%{opacity:.12} }
   @keyframes fadeInUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
   @media (max-width: 760px) {
-    .aq-2col { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
-    .aq-topics { grid-template-columns: repeat(2,1fr) !important; }
-  }
-`;
+73    .aq-2col { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
+74    .aq-topics { grid-template-columns: repeat(2,1fr) !important; }
+75    html, body { overflow-x: hidden !important; max-width: 100% !important; }
+76    .aq-bar { flex-wrap: wrap !important; height: auto !important; padding: 8px 12px !important; gap: 8px !important; }
+77  }
+78  `;
 
 const VOCAB_TEMAS = {
   greetings: [
@@ -3445,7 +3447,7 @@ const handleAuth = async(e) => {
   return (
     <div style={{background:'#020617',minHeight:'100vh',fontFamily:"'Poppins',sans-serif",color:'#e2e8f0',position:'relative'}}>
       <style>{KF}</style>
-      <div style={{background:'linear-gradient(180deg,rgba(13,17,28,.98),rgba(9,11,21,.92))',backdropFilter:'blur(20px)',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.8rem',borderBottom:'1px solid rgba(99,102,241,0.18)',position:'sticky',top:0,zIndex:100,boxShadow:'0 6px 24px rgba(0,0,0,.4)'}}>
+      <div className="aq-bar" style={{background:'linear-gradient(180deg,rgba(13,17,28,.98),rgba(9,11,21,.92))',backdropFilter:'blur(20px)',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.8rem',borderBottom:'1px solid rgba(99,102,241,0.18)',position:'sticky',top:0,zIndex:100,boxShadow:'0 6px 24px rgba(0,0,0,.4)'}}>
         <div style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}} onClick={()=>setScreen('home')}>
           <div style={{width:34,height:34,background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.95rem',boxShadow:'0 0 16px rgba(99,102,241,.4)'}}>🎓</div>
           <span style={{fontWeight:800,fontSize:'1.05rem',letterSpacing:'.02em',background:'linear-gradient(135deg,#818cf8,#c4b5fd)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>AulaQuest</span>
