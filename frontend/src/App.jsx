@@ -70,12 +70,14 @@ const KF = `
   @keyframes pulse-glow { 0%,100%{opacity:.06} 50%{opacity:.12} }
   @keyframes fadeInUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
   @media (max-width: 760px) {
-73    .aq-2col { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
-74    .aq-topics { grid-template-columns: repeat(2,1fr) !important; }
-75    html, body { overflow-x: hidden !important; max-width: 100% !important; }
-76    .aq-bar { flex-wrap: wrap !important; height: auto !important; padding: 8px 12px !important; gap: 8px !important; }
-77  }
-78  `;
+    .aq-2col { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
+    .aq-topics { grid-template-columns: repeat(2,1fr) !important; }
+    html, body { overflow-x: hidden !important; max-width: 100% !important; }
+    .aq-bar { flex-wrap: wrap !important; height: auto !important; padding: 8px 12px !important; gap: 8px !important; }
+    #root, body > div { overflow-x: hidden !important; max-width: 100vw !important; }
+    * { max-width: 100% !important; }
+  }
+  `;
 
 const VOCAB_TEMAS = {
   greetings: [
