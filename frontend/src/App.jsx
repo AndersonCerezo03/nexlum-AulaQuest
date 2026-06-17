@@ -69,6 +69,10 @@ const KF = `
   @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
   @keyframes pulse-glow { 0%,100%{opacity:.06} 50%{opacity:.12} }
   @keyframes fadeInUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+  @media (max-width: 760px) {
+    .aq-2col { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
+    .aq-topics { grid-template-columns: repeat(2,1fr) !important; }
+  }
 `;
 
 const VOCAB_TEMAS = {
@@ -429,7 +433,7 @@ function Home({ onEmpezar, user, onLogout }) {
       </nav>
       <section style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'8rem 2rem 4rem',position:'relative',zIndex:1}}>
         <div style={{position:'absolute',top:'-50%',left:'-20%',width:800,height:800,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',opacity:.07,borderRadius:'50%',filter:'blur(100px)',animation:'pulse-glow 6s ease-in-out infinite'}}/>
-        <div style={{maxWidth:1200,width:'100%',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4rem',alignItems:'center'}}>
+        <div className="aq-2col" style={{maxWidth:1200,width:'100%',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4rem',alignItems:'center'}}>          
           <div style={{animation:'fadeInUp .8s ease'}}>
             <div style={{display:'inline-flex',alignItems:'center',gap:'.5rem',background:'rgba(99,102,241,.15)',border:'1px solid rgba(99,102,241,.3)',padding:'.4rem 1rem',borderRadius:50,fontSize:'.85rem',color:'#6366f1',marginBottom:'1.5rem'}}>
               ⚙️ Aula Virtual Estilo Juego
@@ -3526,8 +3530,7 @@ const handleAuth = async(e) => {
         <div style={{width:'100%',background:'#1e293b',height:10,borderRadius:8,overflow:'hidden',marginBottom:'1rem',position:'relative',boxShadow:'inset 0 1px 3px rgba(0,0,0,.4)'}}>
           <div style={{width:pctNivel+'%',background:'linear-gradient(90deg,#6366f1,#06b6d4,#10b981)',height:'100%',borderRadius:8,transition:'width .5s ease',boxShadow:'0 0 12px rgba(99,102,241,.5)'}}/>
         </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:'1rem'}}>
-          {TOPICS.map((t,idx)=>{
+          <div className="aq-topics" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:'1rem'}}>          {TOPICS.map((t,idx)=>{
             const prog    = progTemas[t.id] || {};
             const completo= prog.completo || false;
             const completadas = prog.completadas || 0;
