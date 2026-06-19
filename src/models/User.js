@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
   password:         { type: String, required: true, minlength: 8 },
   role:             { type: String, enum: ['user','admin'], default: 'user' },
   englishLevel:     { type: String, enum: ['A1','A2','B1','B2','C1','C2'], default: 'A1' },
+  learningLanguage: { type: String, enum: ['en','fr','de','pt','it'], default: 'en' },
   experiencePoints: { type: Number, default: 0 },
   wordsCorrect:     { type: Number, default: 0 },
   nivelesAprobados: { type: [String], default: [] },

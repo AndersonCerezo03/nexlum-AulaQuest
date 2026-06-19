@@ -19,6 +19,7 @@ app.use('/api/cursos',   require('./routes/cursos'));
 app.use('/api/quiz',     require('./routes/quiz'));
 app.use('/api/tts',      require('./routes/tts'));
 app.use('/api/interview', require('./routes/interview'));
+app.use('/api/guide',    require('./routes/guide'));
 app.use('/api/admin',    require('./routes/admin'));
 
 app.get('/', (_req, res) => res.json({ status: 'Nexlum API OK' }));
