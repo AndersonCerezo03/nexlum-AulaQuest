@@ -1,21 +1,30 @@
-// Mailer con Resend (API HTTP) — funciona en Render (no usa puertos SMTP bloqueados)
+// Mailer con Brevo (API HTTP) — funciona en Render (no usa puertos SMTP bloqueados)
 // Mantiene las mismas funciones: enviarCorreo(to, subject, html) y plantilla(...)
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-// Remitente: si no verificas dominio, Resend solo permite onboarding@resend.dev
-const FROM = process.env.MAIL_FROM || 'AulaQuest <onboarding@resend.dev>';
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+
+// Remitente: dominio nexlum.co ya autenticado en Brevo
+// Formato: "Nombre|email"  ej: "AulaQuest|hola@nexlum.co"
+const MAIL_FROM = process.env.MAIL_FROM || 'AulaQuest|hola@nexlum.co';
+const [FROM_NAME, FROM_EMAIL] = MAIL_FROM.split('|');
 
 async function enviarCorreo(to, subject, html) {
-  // Si hay API key de Resend, envia por su API
-  if (RESEND_API_KEY) {
+  // Si hay API key de Brevo, envia por su API
+  if (BREVO_API_KEY) {
     try {
-      const resp = await fetch('https://api.resend.com/emails', {
+      const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer ' + RESEND_API_KEY,
+          'api-key': BREVO_API_KEY,
           'Content-Type': 'application/json',
+          'accept': 'application/json',
         },
-        body: JSON.stringify({ from: FROM, to: [to], subject: subject, html: html }),
+        body: JSON.stringify({
+          sender: { name: FROM_NAME, email: FROM_EMAIL },
+          to: [{ email: to }],
+          subject: subject,
+          htmlContent: html,
+        }),
       });
 
       if (resp.ok) {
@@ -23,17 +32,17 @@ async function enviarCorreo(to, subject, html) {
         return { sent: true };
       } else {
         const errText = await resp.text();
-        console.error('❌ Resend error (' + resp.status + '): ' + errText);
+        console.error('❌ Brevo error (' + resp.status + '): ' + errText);
         return { sent: false, error: errText };
       }
     } catch (e) {
-      console.error('❌ Error enviando con Resend: ' + e.message);
+      console.error('❌ Error enviando con Brevo: ' + e.message);
       return { sent: false, error: e.message };
     }
   }
 
   // Sin API key: modo consola (desarrollo)
-  console.log('\n================ CORREO (modo dev, sin RESEND_API_KEY) ================');
+  console.log('\n================ CORREO (modo dev, sin BREVO_API_KEY) ================');
   console.log('Para:    ' + to);
   console.log('Asunto:  ' + subject);
   console.log('Cuerpo:  ' + html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
