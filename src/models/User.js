@@ -18,6 +18,24 @@ const userSchema = new mongoose.Schema({
   },
   ultimoTema: { type: String, default: '' },
 
+  levelAssigned:  { type: Boolean, default: false },
+  trialStartDate: { type: Date },
+  isPremium:      { type: Boolean, default: false },
+
+  // Resultado del test de diagnóstico (informativo; el alumno lo ve en el aula)
+  diagnostico: {
+    fecha:         { type: Date },
+    puntaje:       { type: Number },   // aciertos
+    total:         { type: Number },   // total de preguntas
+    nivelEstimado: { type: String },   // A1–C2 estimado
+    areas:         { type: mongoose.Schema.Types.Mixed }, // { vocabulario:{c,t}, gramatica:{c,t}, ... }
+    porNivel:      { type: mongoose.Schema.Types.Mixed },  // { A1:{c,t}, A2:{c,t}, ... }
+  },
+  dailyProgress: {
+    date:    { type: Date },
+    topicId: { type: String, default: '' },
+  },
+
   practiceCount: { type: Number, default: 0 },
   lastActive:    { type: Date },
 

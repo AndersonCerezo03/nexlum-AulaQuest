@@ -25,19 +25,16 @@ router.post('/register', limiterRegistro, async function(req, res) {
     const name  = (req.body.name || '').trim();
     const email = (req.body.email || '').toLowerCase().trim();
     const password = req.body.password || '';
-    const englishLevel = req.body.englishLevel || 'A1';
-
     const eNombre = validarNombre(name);     if (eNombre) return res.status(400).json({ msg: eNombre });
     const eEmail  = validarEmail(email);     if (eEmail)  return res.status(400).json({ msg: eEmail });
     const ePass   = validarPassword(password); if (ePass) return res.status(400).json({ msg: ePass });
-    if (!validarNivel(englishLevel)) return res.status(400).json({ msg: 'Nivel de ingles invalido' });
 
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ msg: 'Ese correo ya esta registrado' });
 
     const rawVerify = crypto.randomBytes(32).toString('hex');
     const u = new User({
-      name, email, password, englishLevel,
+      name, email, password,
       verifyToken: sha256(rawVerify),
       verifyTokenExp: new Date(Date.now() + 24*60*60*1000),
       emailVerified: false,

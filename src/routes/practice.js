@@ -3,6 +3,23 @@ const User     = require('../models/User');
 const auth     = require('../middleware/auth');
 const mongoose = require('mongoose');
 
+const TRIAL_DAYS = 3;
+
+function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() &&
+         a.getMonth()    === b.getMonth()    &&
+         a.getDate()     === b.getDate();
+}
+
+function trialStatus(user) {
+  if (user.isPremium || user.role === 'admin') return { active: true, expired: false, daysLeft: null };
+  if (!user.trialStartDate) return { active: true, expired: false, daysLeft: TRIAL_DAYS };
+  const msElapsed = Date.now() - new Date(user.trialStartDate).getTime();
+  const daysElapsed = msElapsed / (1000 * 60 * 60 * 24);
+  const daysLeft = Math.max(0, Math.ceil(TRIAL_DAYS - daysElapsed));
+  return { active: daysLeft > 0, expired: daysLeft === 0, daysLeft };
+}
+
 router.post('/word-done', auth, async function(req, res) {
   try {
     const { temaId, word } = req.body;
@@ -14,6 +31,36 @@ router.post('/word-done', auth, async function(req, res) {
     const tema  = (curso?.temas || []).find(t => t.id === temaId);
 
     if (!tema) return res.status(404).json({ msg: 'Tema no encontrado' });
+
+    // ── Chequeo de trial ────────────────────────────────────────────────────
+    const trial = trialStatus(user);
+    if (trial.expired) {
+      return res.status(403).json({
+        msg: 'Tu periodo de prueba gratuita ha terminado.',
+        trialExpired: true,
+      });
+    }
+
+    // ── Chequeo de límite diario (solo usuarios no premium) ─────────────────
+    if (!user.isPremium && user.role !== 'admin') {
+      const hoy = new Date();
+      const dp  = user.dailyProgress || {};
+      const mismoTema  = dp.topicId === temaId;
+      const mismoDia   = dp.date && isSameDay(new Date(dp.date), hoy);
+
+      if (mismoDia && !mismoTema) {
+        return res.status(429).json({
+          msg: 'Solo puedes avanzar en un tema por día en la versión gratuita. Vuelve mañana para continuar.',
+          dailyLocked: true,
+          dailyTopicId: dp.topicId,
+        });
+      }
+
+      // Registrar el tema del día si es la primera práctica de hoy
+      if (!mismoDia || !dp.topicId) {
+        user.dailyProgress = { date: hoy, topicId: temaId };
+      }
+    }
 
     const palabrasDelTema = tema.vocabulario.map(v => v.en.toLowerCase().trim());
     if (!palabrasDelTema.includes(word.toLowerCase().trim()))
@@ -63,6 +110,14 @@ router.get('/progreso', auth, async function(req, res) {
     const curso = await db.collection('cursos').findOne({ nivel: user.englishLevel });
     if (!curso) return res.status(404).json({ msg: 'Curso no encontrado' });
 
+    // Inicializar trialStartDate la primera vez que accede al aula
+    let dirty = false;
+    if (!user.trialStartDate && !user.isPremium && user.role !== 'admin') {
+      user.trialStartDate = new Date();
+      dirty = true;
+    }
+    if (dirty) await user.save();
+
     const temas = (curso.temas || []).map((t, idx) => {
       const completadas = user.progresoTemas.get(t.id) || [];
       const total       = t.vocabulario?.length || 0;
@@ -87,6 +142,12 @@ router.get('/progreso', auth, async function(req, res) {
     const todosCompletos = temas.every(t => t.completo);
     const yaAprobado     = (user.nivelesAprobados || []).includes(user.englishLevel);
 
+    // Estado del trial y límite diario
+    const trial = trialStatus(user);
+    const hoy   = new Date();
+    const dp    = user.dailyProgress || {};
+    const dailyTopicId = (dp.date && isSameDay(new Date(dp.date), hoy)) ? (dp.topicId || '') : '';
+
     return res.json({
       nivel:            user.englishLevel,
       temas,
@@ -95,6 +156,13 @@ router.get('/progreso', auth, async function(req, res) {
       ultimoTema:       user.ultimoTema || '',
       experiencePoints: user.experiencePoints,
       wordsCorrect:     user.wordsCorrect,
+      isPremium:        user.isPremium || false,
+      trial: {
+        expired:  trial.expired,
+        daysLeft: trial.daysLeft,
+        active:   trial.active,
+      },
+      dailyTopicId,
     });
   } catch(err) {
     return res.status(500).json({ msg: err.message });

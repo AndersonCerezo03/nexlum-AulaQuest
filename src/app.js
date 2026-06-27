@@ -21,6 +21,7 @@ app.use('/api/tts',      require('./routes/tts'));
 app.use('/api/interview', require('./routes/interview'));
 app.use('/api/guide',    require('./routes/guide'));
 app.use('/api/admin',    require('./routes/admin'));
+app.use('/api/placement-test', require('./routes/placementTest'));
 
 app.get('/', (_req, res) => res.json({ status: 'Nexlum API OK' }));
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-const API = 'https://nexlum-aulaquest.onrender.com';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 const authH = (t) => ({ 'Content-Type':'application/json', 'Authorization':'Bearer '+t });
 const clean = (s) => s.toLowerCase().trim().replace(/[^a-z\s]/g,'');
 
@@ -149,15 +149,22 @@ function playAudio(url, rate, onEnd) {
 
 // Alex habla en inglés y luego en español
 async function alexSpeakBilingual(enText, esText, token, onEnd) {
-  if (window._alexListening) { if(onEnd) onEnd(); return; }
+  // onEnd se llama UNA sola vez. Watchdog: libera el flujo aunque un audio de la
+  // secuencia se cuelgue, para que la práctica no quede trabada en "speaking".
+  let done = false, guard = null;
+  const finish = () => { if (done) return; done = true; if (guard) clearTimeout(guard); if (onEnd) onEnd(); };
+  guard = setTimeout(finish, 14000);
+
+  if (window._alexListening) { finish(); return; }
   if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
   window.speechSynthesis && window.speechSynthesis.cancel();
 
   const fallback = () => {
+    if (!window.speechSynthesis) { finish(); return; }
     const u = new SpeechSynthesisUtterance(enText);
     u.lang='en-US'; u.rate=0.72; u.pitch=1.0; u.volume=1;
-    if(onEnd) u.onend = onEnd;
-    window.speechSynthesis && window.speechSynthesis.speak(u);
+    u.onend = finish; u.onerror = finish;
+    window.speechSynthesis.speak(u);
   };
 
   if (!token) { fallback(); return; }
@@ -166,8 +173,8 @@ async function alexSpeakBilingual(enText, esText, token, onEnd) {
     const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
 
     const [rEn, rEs] = await Promise.all([
-      fetch('https://nexlum-aulaquest.onrender.com/api/tts/speak',    { method:'POST', headers, body: JSON.stringify({ text: enText }) }),
-      fetch('https://nexlum-aulaquest.onrender.com/api/tts/speak-es', { method:'POST', headers, body: JSON.stringify({ text: esText }) }),
+      fetch(API+'/api/tts/speak',    { method:'POST', headers, body: JSON.stringify({ text: enText }) }),
+      fetch(API+'/api/tts/speak-es', { method:'POST', headers, body: JSON.stringify({ text: esText }) }),
     ]);
 
     if (!rEn.ok || !rEs.ok) { fallback(); return; }
@@ -177,15 +184,15 @@ async function alexSpeakBilingual(enText, esText, token, onEnd) {
     const urlEs = URL.createObjectURL(blobEs);
 
     const playSeq = (steps, idx) => {
-      if (idx >= steps.length) { if(onEnd) onEnd(); return; }
+      if (idx >= steps.length) { finish(); return; }
       const step = steps[idx];
       if (step.pause) { setTimeout(() => playSeq(steps, idx+1), step.pause); return; }
-      if (window._alexListening) { if(onEnd) onEnd(); return; }
+      if (window._alexListening) { finish(); return; }
       const audio = new Audio(step.url);
       _currentAudio = audio;
       audio.onended = () => playSeq(steps, idx+1);
       audio.onerror = () => playSeq(steps, idx+1);
-      audio.play().catch(() => { fallback(); });
+      audio.play().catch(() => playSeq(steps, idx+1)); // si un audio falla, sigue con el resto
     };
 
     playSeq([
@@ -204,70 +211,55 @@ const _ttsCache = {};
 let _currentAudio = null;
 
 function alexSpeak(text, rate, onEnd) {
-  if (window._alexListening) { if(onEnd) onEnd(); return; }
+  // onEnd se llama UNA sola vez. Watchdog: si el audio nunca dispara su evento
+  // de fin (bug de Web Speech, blob inválido o red lenta), el flujo se libera igual
+  // para que la práctica del aula no se quede trabada esperando para siempre.
+  let done = false, guard = null;
+  const finish = () => { if (done) return; done = true; if (guard) clearTimeout(guard); if (onEnd) onEnd(); };
+  guard = setTimeout(finish, 9000);
+
+  if (window._alexListening) { finish(); return; }
 
   // Cancelar audio previo
-  if (_currentAudio) {
-    _currentAudio.pause();
-    _currentAudio.currentTime = 0;
-    _currentAudio = null;
-  }
+  if (_currentAudio) { _currentAudio.pause(); _currentAudio.currentTime = 0; _currentAudio = null; }
   window.speechSynthesis && window.speechSynthesis.cancel();
   window.responsiveVoice && window.responsiveVoice.cancel();
 
-  const token = window._alexToken || '';
-  if (!token) {
-    // Fallback Web Speech si no hay token
-    if (!window.speechSynthesis) { if(onEnd) onEnd(); return; }
+  const speakWS = () => {
+    if (!window.speechSynthesis) { finish(); return; }
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang='en-US'; u.rate=0.80; u.pitch=1.0; u.volume=1;
-    if(onEnd) u.onend = onEnd;
+    u.lang='en-US'; u.rate=rate || 0.80; u.pitch=1.0; u.volume=1;
+    u.onend = finish; u.onerror = finish;
     window.speechSynthesis.speak(u);
-    return;
-  }
+  };
+
+  const playUrl = (url) => {
+    if (window._alexListening) { finish(); return; }
+    const audio = new Audio(url);
+    audio.playbackRate = rate || 0.95;
+    _currentAudio = audio;
+    audio.onended = finish;
+    audio.onerror = finish;
+    audio.play().catch(finish);
+  };
+
+  const token = window._alexToken || '';
+  if (!token) { speakWS(); return; }   // sin token: voz del navegador
 
   // Usar cache si existe
   const cacheKey = text.substring(0,50);
-  if (_ttsCache[cacheKey]) {
-    const audio = new Audio(_ttsCache[cacheKey]);
-    audio.playbackRate = rate || 0.95;
-    _currentAudio = audio;
-    audio.onended = onEnd || null;
-    audio.onerror = () => { if(onEnd) onEnd(); };
-    audio.play().catch(() => { if(onEnd) onEnd(); });
-    return;
-  }
+  if (_ttsCache[cacheKey]) { playUrl(_ttsCache[cacheKey]); return; }
 
-  // Llamar al backend ElevenLabs
-  fetch('/https://nexlum-aulaquest.onrender.comapi/tts/speak', {
+  // Llamar al backend ElevenLabs (con fallback a la voz del navegador si falla)
+  fetch(API+'/api/tts/speak', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
     body: JSON.stringify({ text }),
   })
-  .then(r => {
-    if (!r.ok) throw new Error('TTS error');
-    return r.blob();
-  })
-  .then(blob => {
-    const url = URL.createObjectURL(blob);
-    _ttsCache[cacheKey] = url;
-    if (window._alexListening) { if(onEnd) onEnd(); return; }
-    const audio = new Audio(url);
-    audio.playbackRate = rate || 0.95;
-    _currentAudio = audio;
-    audio.onended = onEnd || null;
-    audio.onerror = () => { if(onEnd) onEnd(); };
-    audio.play().catch(() => { if(onEnd) onEnd(); });
-  })
-  .catch(() => {
-    // Fallback Web Speech si falla ElevenLabs
-    if (!window.speechSynthesis) { if(onEnd) onEnd(); return; }
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang='en-US'; u.rate=0.80; u.pitch=1.0; u.volume=1;
-    if(onEnd) u.onend = onEnd;
-    window.speechSynthesis.speak(u);
-  });
+  .then(r => { if (!r.ok) throw new Error('TTS error'); return r.blob(); })
+  .then(blob => { const url = URL.createObjectURL(blob); _ttsCache[cacheKey] = url; playUrl(url); })
+  .catch(speakWS);
 }
 
 function MrAlexOrb({ size, state }) {
@@ -925,7 +917,7 @@ function InterviewerCard({ cfg, selected, onSelect }) {
 
 
 function JobInterview({ token, user, onBack }) {
-  const N8N_URL = 'https://nexlum-aulaquest.onrender.com/api/interview/message';
+  const N8N_URL = API+'/api/interview/message';
   const [jobTitle,  setJobTitle]  = useState('Software Developer');
   const [level,     setLevel]     = useState('mid');
   const [phase,     setPhase]     = useState('setup');
@@ -1497,7 +1489,7 @@ function MemoryGame({ nivel, vocabData, onBack }) {
 
 // ─── MINIJUEGO: LLUVIA DE PALABRAS ───────────────────────────────────────────
 function WordRain({ nivel, token, vocabData, onBack }) {
-  const API = 'https://nexlum-aulaquest.onrender.com';
+  const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
   const authH = (t) => ({ Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' });
 
   const [words,      setWords]      = useState([]);   // palabras cayendo [{id,en,es,x,y,speed,answered}]
@@ -2842,6 +2834,367 @@ function AvatarIframe({ src, titulo, onBack }) {
   );
 }
 
+// ── Placement Test ────────────────────────────────────────────────────────────
+
+const NIVEL_INFO = {
+  A1: { label:'A1 — Principiante',   color:'#10b981', emoji:'🌱', desc:'Conoces saludos básicos y palabras del día a día.' },
+  A2: { label:'A2 — Elemental',      color:'#06b6d4', emoji:'🌿', desc:'Puedes comunicarte en situaciones simples y cotidianas.' },
+  B1: { label:'B1 — Intermedio',     color:'#6366f1', emoji:'⚡', desc:'Entiendes textos cotidianos y puedes describir experiencias.' },
+  B2: { label:'B2 — Intermedio alto',color:'#8b5cf6', emoji:'🔥', desc:'Te comunicas con fluidez y entiendes temas complejos.' },
+  C1: { label:'C1 — Avanzado',       color:'#d946ef', emoji:'💎', desc:'Dominas el inglés con espontaneidad y precisión.' },
+  C2: { label:'C2 — Maestría',       color:'#f59e0b', emoji:'👑', desc:'Comprensión y expresión a nivel nativo.' },
+};
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const NIVEL_ORDER_PT = ['A1','A2','B1','B2','C1','C2'];
+const PASS_RATIO_PT  = 0.75; // 75% para avanzar (ej. 6 de 8)
+const passNeeded = total => Math.ceil((total || 0) * PASS_RATIO_PT);
+
+function wordSim(a, b) {
+  const wa = new Set(a.split(' ').filter(w => w.length > 1));
+  const wb = new Set(b.split(' ').filter(w => w.length > 1));
+  if (!wa.size || !wb.size) return 0;
+  return [...wa].filter(w => wb.has(w)).length / Math.max(wa.size, wb.size);
+}
+
+function PlacementTestScreen({ token, userName, alexSpeak, onFinish }) {
+  // Test de DIAGNÓSTICO lineal: una sola pasada de preguntas (fácil → difícil).
+  const [preguntas,   setPreguntas]   = useState([]);
+  const [phase,       setPhase]       = useState('loading'); // loading|intro|question|submitting|error
+  const [idx,         setIdx]         = useState(0);
+  const [seleccion,   setSeleccion]   = useState(null);
+  const [feedback,    setFeedback]    = useState(null);
+  const [isListening, setIsListening] = useState(false);
+  const [pronResult,  setPronResult]  = useState(null);
+  const [errorMsg,    setErrorMsg]    = useState('');
+  const answersRef = useRef([]);
+
+  // Cargar el test de diagnóstico (lista ordenada por dificultad)
+  useEffect(() => {
+    fetch(API_BASE + '/api/placement-test', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(d => {
+        if (!d.preguntas) { setErrorMsg(d.msg || 'Error al cargar el test.'); setPhase('error'); return; }
+        setPreguntas(d.preguntas);
+        setPhase('intro');
+      })
+      .catch(() => { setErrorMsg('No se pudo conectar al servidor.'); setPhase('error'); });
+  }, [token]);
+
+  // Auto-speak para listening y pronunciación al cargar la pregunta
+  useEffect(() => {
+    if (phase !== 'question' || !preguntas[idx]) return;
+    const q = preguntas[idx];
+    if ((q.tipo === 'listening' || q.tipo === 'pronunciation') && q.audio) {
+      const t = setTimeout(() => alexSpeak(q.audio, 0.8), 500);
+      return () => clearTimeout(t);
+    }
+  }, [phase, idx, preguntas]);
+
+  function handleMCAnswer(i) {
+    if (seleccion !== null) return;
+    const q = preguntas[idx];
+    const correcto = i === q.ans;
+    setSeleccion(i);
+    setFeedback(correcto ? 'correct' : 'wrong');
+    answersRef.current = [...answersRef.current, { id: q._id, ans: i }];
+    setTimeout(() => { setSeleccion(null); setFeedback(null); advance(); }, 850);
+  }
+
+  function startPronunciation(q) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { resolvePron(false, q); return; }
+    const rec = new SR();
+    rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 5;
+    setIsListening(true);
+    rec.onresult = e => {
+      setIsListening(false);
+      const spokenList = Array.from(e.results[0]).map(r => r.transcript.toLowerCase().trim().replace(/[^a-z\s]/g,''));
+      const target = (q.target || '').toLowerCase().trim().replace(/[^a-z\s]/g,'');
+      const ok = spokenList.some(s => s.includes(target) || target.includes(s) || wordSim(s, target) >= 0.55);
+      resolvePron(ok, q);
+    };
+    rec.onerror = () => { setIsListening(false); resolvePron(false, q); };
+    rec.start();
+  }
+
+  function resolvePron(ok, q) {
+    setPronResult(ok ? 'correct' : 'wrong');
+    answersRef.current = [...answersRef.current, { id: q._id, ans: ok ? 1 : 0 }];
+    setTimeout(() => { setPronResult(null); advance(); }, 1200);
+  }
+
+  function advance() {
+    const next = idx + 1;
+    if (next < preguntas.length) { setIdx(next); return; }
+    submitTest(answersRef.current); // terminó el diagnóstico
+  }
+
+  async function submitTest(answers) {
+    setPhase('submitting');
+    try {
+      const r = await fetch(API_BASE + '/api/placement-test/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ respuestas: answers }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setErrorMsg(d.msg); setPhase('error'); return; }
+      onFinish(d.diagnostico, d.user); // el padre lleva al alumno al Aula 1
+    } catch { setErrorMsg('Error de conexión.'); setPhase('error'); }
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  const C = '#8b5cf6'; // color de marca del diagnóstico
+
+  if (phase === 'loading') return (
+    <div style={{background:'#06080f',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Poppins',sans-serif"}}>
+      <div style={{textAlign:'center',color:'#64748b'}}><div style={{fontSize:'2.5rem',marginBottom:12}}>⚙️</div><p>Preparando tu diagnóstico…</p></div>
+    </div>
+  );
+  if (phase === 'error') return (
+    <div style={{background:'#06080f',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Poppins',sans-serif"}}>
+      <div style={{textAlign:'center',color:'#f87171',maxWidth:380,padding:32}}><div style={{fontSize:'2.5rem',marginBottom:12}}>⚠️</div><p>{errorMsg}</p></div>
+    </div>
+  );
+  if (phase === 'submitting') return (
+    <div style={{background:'#06080f',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Poppins',sans-serif"}}>
+      <div style={{textAlign:'center',color:'#94a3b8'}}><div style={{fontSize:'2.5rem',marginBottom:12}}>🧠</div><p style={{fontWeight:600}}>Analizando tu diagnóstico…</p></div>
+    </div>
+  );
+
+  // Intro del diagnóstico
+  if (phase === 'intro') {
+    return (
+      <div style={{background:'#06080f',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Poppins',sans-serif",padding:24}}>
+        <div style={{width:'100%',maxWidth:500,textAlign:'center'}}>
+          <div style={{background:'#0d1117',borderRadius:24,padding:'40px 30px',border:`1px solid ${C}33`,boxShadow:`0 0 50px ${C}0d`}}>
+            <div style={{fontSize:'3.2rem',marginBottom:8}}>🎓</div>
+            <h2 style={{color:C,margin:'0 0 10px',fontSize:'1.4rem',fontWeight:900}}>¡Hola, {userName}!</h2>
+            <p style={{color:'#94a3b8',fontSize:13.5,marginBottom:8,lineHeight:1.6}}>
+              Este es tu <strong style={{color:'#cbd5e1'}}>test de diagnóstico</strong> de inglés. Vamos a medir cómo estás en:
+            </p>
+            <p style={{color:'#64748b',fontSize:12.5,marginBottom:14,lineHeight:1.9}}>
+              🖼️ Imágenes · 📖 Vocabulario · 📝 Gramática<br/>🎧 Listening · 🎤 Pronunciación con Mr. Alex
+            </p>
+            <div style={{background:`${C}10`,border:`1px solid ${C}28`,borderRadius:12,padding:'12px 16px',marginBottom:18}}>
+              <p style={{color:'#94a3b8',fontSize:12,margin:0,lineHeight:1.6}}>
+                Son <strong style={{color:C}}>{preguntas.length} preguntas</strong>, de lo más fácil a lo más difícil. Responde con sinceridad — al terminar verás tu diagnóstico y empezarás en el <strong style={{color:C}}>Aula 1</strong>. 🚀
+              </p>
+            </div>
+            <button onClick={() => setPhase('question')}
+              style={{width:'100%',padding:'14px 0',background:`linear-gradient(135deg,${C},#6366f1)`,color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:'pointer',fontFamily:"'Poppins',sans-serif",boxShadow:`0 4px 20px ${C}33`}}>
+              Comenzar diagnóstico 🚀
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Pregunta activa
+  if (phase === 'question') {
+    const q = preguntas[idx];
+    if (!q) return null;
+    const progPct = (idx / preguntas.length) * 100;
+    const TIPO_LABEL = { vocab:'Vocabulario', grammar:'Gramática', listening:'Escucha a Mr. Alex 🎧', fill:'Completa', pronunciation:'Pronunciación con Mr. Alex 🎤', image:'¿Qué ves? 🖼️' };
+    return (
+      <div style={{background:'#06080f',minHeight:'100vh',fontFamily:"'Poppins',sans-serif",color:'#e2e8f0',display:'flex',flexDirection:'column',alignItems:'center',padding:'24px 18px'}}>
+        {/* Header */}
+        <div style={{width:'100%',maxWidth:560,marginBottom:18}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:7}}>
+            <span style={{color:C,fontWeight:700,fontSize:12}}>🎓 Test de diagnóstico</span>
+            <span style={{color:'#334155',fontSize:11}}>{idx+1} / {preguntas.length}</span>
+          </div>
+          <div style={{height:5,background:'rgba(255,255,255,.05)',borderRadius:99,overflow:'hidden'}}>
+            <div style={{height:'100%',width:progPct+'%',background:`linear-gradient(90deg,${C},#6366f1)`,borderRadius:99,transition:'width .4s'}}/>
+          </div>
+        </div>
+
+        {/* Tarjeta */}
+        <div style={{width:'100%',maxWidth:560,background:'#0d1117',borderRadius:20,padding:'26px 22px',border:`1px solid ${C}18`,boxShadow:'0 8px 40px rgba(0,0,0,.55)'}}>
+          {/* Badge de tipo */}
+          <span style={{display:'inline-block',background:`${C}15`,color:C,fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:99,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:14}}>
+            {TIPO_LABEL[q.tipo] || q.tipo}
+          </span>
+
+          {/* Imagen alusiva (emoji grande) */}
+          {q.img && (
+            <div style={{display:'flex',justifyContent:'center',marginBottom:16}}>
+              <div style={{width:120,height:120,borderRadius:24,background:`${C}0d`,border:`1px solid ${C}22`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'4.2rem',lineHeight:1,boxShadow:`inset 0 0 30px ${C}0a`}}>
+                {q.img}
+              </div>
+            </div>
+          )}
+
+          {/* Botones escuchar — normal y más despacio (listening y pronunciación) */}
+          {(q.tipo === 'listening' || q.tipo === 'pronunciation') && q.audio && (
+            <div style={{display:'flex',gap:8,marginBottom:14}}>
+              <button onClick={() => alexSpeak(q.audio, 0.85)}
+                style={{flex:2,display:'flex',alignItems:'center',gap:8,background:`${C}15`,border:`1px solid ${C}35`,borderRadius:12,padding:'10px 14px',cursor:'pointer',color:C,fontFamily:"'Poppins',sans-serif",fontWeight:600,fontSize:13,justifyContent:'center',transition:'opacity .2s'}}
+                onMouseEnter={e=>e.currentTarget.style.opacity='.8'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+                🎧 {q.tipo === 'pronunciation' ? 'Escuchar frase' : 'Escuchar'}
+              </button>
+              <button onClick={() => alexSpeak(q.audio, 0.5)} title="Mr. Alex habla más despacio"
+                style={{flex:1,display:'flex',alignItems:'center',gap:6,background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,padding:'10px 12px',cursor:'pointer',color:'#94a3b8',fontFamily:"'Poppins',sans-serif",fontWeight:600,fontSize:12.5,justifyContent:'center',transition:'opacity .2s'}}
+                onMouseEnter={e=>e.currentTarget.style.opacity='.8'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+                🐢 Despacio
+              </button>
+            </div>
+          )}
+
+          {/* Texto de la pregunta */}
+          <p style={{fontSize:'1rem',fontWeight:600,color:'#e2e8f0',lineHeight:1.55,marginBottom:18}}>{q.q}</p>
+
+          {/* Opciones múltiples (vocab, grammar, fill, listening, image) */}
+          {q.tipo !== 'pronunciation' && (
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {(q.opts||[]).map((opt, i) => {
+                let bg='rgba(255,255,255,.03)', bdr=`1px solid ${C}10`, clr='#94a3b8';
+                if (seleccion !== null) {
+                  if (i === q.ans) { bg='rgba(16,185,129,.12)'; bdr='1px solid rgba(16,185,129,.4)'; clr='#34d399'; }
+                  else if (i === seleccion) { bg='rgba(239,68,68,.1)'; bdr='1px solid rgba(239,68,68,.35)'; clr='#f87171'; }
+                }
+                return (
+                  <button key={i} onClick={() => handleMCAnswer(i)} disabled={seleccion !== null}
+                    style={{background:bg,border:bdr,borderRadius:11,padding:'11px 14px',textAlign:'left',color:clr,fontSize:13,fontFamily:"'Poppins',sans-serif",cursor:seleccion!==null?'default':'pointer',transition:'all .14s',fontWeight:500,display:'flex',alignItems:'center',gap:10}}
+                    onMouseEnter={e=>{ if(!seleccion) e.currentTarget.style.background=`${C}0f`; }}
+                    onMouseLeave={e=>{ if(!seleccion) e.currentTarget.style.background='rgba(255,255,255,.03)'; }}>
+                    <span style={{width:21,height:21,borderRadius:99,background:`${C}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:800,color:C,flexShrink:0}}>
+                      {String.fromCharCode(65+i)}
+                    </span>
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Pronunciación */}
+          {q.tipo === 'pronunciation' && !pronResult && (
+            <div style={{textAlign:'center',paddingTop:4}}>
+              <div style={{background:'rgba(99,102,241,.07)',border:'1px solid rgba(99,102,241,.15)',borderRadius:12,padding:'12px 18px',marginBottom:16}}>
+                <span style={{color:'#818cf8',fontWeight:700,fontSize:'1rem',fontStyle:'italic'}}>"{q.audio}"</span>
+              </div>
+              <p style={{color:'#475569',fontSize:11.5,marginBottom:16}}>Mr. Alex dice la frase arriba. Escúchala y repítela con tu micrófono.</p>
+              <button onClick={() => startPronunciation(q)} disabled={isListening}
+                style={{display:'inline-flex',alignItems:'center',gap:10,padding:'13px 30px',background:isListening?'rgba(239,68,68,.18)':'linear-gradient(135deg,#6366f1,#8b5cf6)',border:'none',borderRadius:14,cursor:isListening?'default':'pointer',color:'#fff',fontFamily:"'Poppins',sans-serif",fontWeight:700,fontSize:14,boxShadow:'0 4px 18px rgba(99,102,241,.3)',transition:'transform .15s'}}
+                onMouseEnter={e=>{ if(!isListening) e.currentTarget.style.transform='scale(1.03)'; }}
+                onMouseLeave={e=>e.currentTarget.style.transform='scale(1)'}>
+                <span style={{fontSize:'1.3rem'}}>{isListening ? '🔴' : '🎤'}</span>
+                {isListening ? 'Escuchando…' : 'Hablar ahora'}
+              </button>
+            </div>
+          )}
+
+          {/* Resultado pronunciación */}
+          {pronResult && (
+            <div style={{textAlign:'center',padding:'12px 0',fontSize:15,fontWeight:700,color:pronResult==='correct'?'#34d399':'#f87171'}}>
+              {pronResult==='correct' ? '✓ ¡Excelente pronunciación!' : '✗ Sigue practicando — continúa'}
+            </div>
+          )}
+
+          {/* Feedback opción múltiple */}
+          {feedback && (
+            <div style={{marginTop:12,textAlign:'center',fontSize:14,fontWeight:700,color:feedback==='correct'?'#34d399':'#f87171'}}>
+              {feedback==='correct' ? '✓ ¡Correcto!' : '✗ Incorrecto'}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// Panel de resultados del diagnóstico (modal que se abre desde el aula)
+const DIAG_AREAS = [
+  ['imagenes',     '🖼️', 'Imágenes'],
+  ['vocabulario',  '📖', 'Vocabulario'],
+  ['gramatica',    '📝', 'Gramática'],
+  ['listening',    '🎧', 'Listening'],
+  ['pronunciacion','🎤', 'Pronunciación'],
+];
+
+function DiagnosticoPanel({ diag, userName, onClose }) {
+  if (!diag) return null;
+  const info = NIVEL_INFO[diag.nivelEstimado] || NIVEL_INFO['A1'];
+  const pct = (c, t) => (t > 0 ? Math.round((c / t) * 100) : 0);
+  const colorPct = p => (p >= 70 ? '#34d399' : p >= 40 ? '#fbbf24' : '#f87171');
+  const pctGlobal = pct(diag.puntaje, diag.total);
+
+  const areas = DIAG_AREAS
+    .map(([k, ic, label]) => { const a = (diag.areas && diag.areas[k]) || { c: 0, t: 0 }; return { k, ic, label, c: a.c, t: a.t, p: pct(a.c, a.t) }; })
+    .filter(a => a.t > 0);
+  const mejorar = areas.filter(a => a.p < 70).sort((a, b) => a.p - b.p).slice(0, 3);
+
+  return (
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(2,4,10,.8)',backdropFilter:'blur(4px)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:18,fontFamily:"'Poppins',sans-serif",overflowY:'auto'}}>
+      <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:480,background:'#0d1117',borderRadius:22,border:`1px solid ${info.color}33`,boxShadow:`0 0 60px ${info.color}1a,0 12px 50px rgba(0,0,0,.7)`,maxHeight:'92vh',overflowY:'auto'}}>
+        {/* Header */}
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 22px 0'}}>
+          <span style={{color:info.color,fontWeight:800,fontSize:'1rem'}}>🎓 Tu diagnóstico</span>
+          <button onClick={onClose} style={{background:'rgba(255,255,255,.05)',border:'none',borderRadius:8,width:30,height:30,color:'#94a3b8',cursor:'pointer',fontSize:15}}>✕</button>
+        </div>
+
+        <div style={{padding:'10px 22px 22px',textAlign:'center'}}>
+          <p style={{color:'#64748b',fontSize:13,margin:'4px 0 14px'}}>Hola <strong style={{color:'#94a3b8'}}>{userName}</strong>, así estuvo tu prueba:</p>
+
+          {/* Nota global + nivel estimado */}
+          <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap',marginBottom:18}}>
+            <div style={{flex:'1 1 120px',background:'rgba(255,255,255,.03)',borderRadius:16,padding:'16px 10px',border:'1px solid rgba(255,255,255,.06)'}}>
+              <div style={{fontSize:'1.9rem',fontWeight:900,color:colorPct(pctGlobal),lineHeight:1}}>{diag.puntaje}<span style={{fontSize:'1rem',color:'#475569'}}>/{diag.total}</span></div>
+              <div style={{fontSize:11,color:'#64748b',marginTop:4}}>aciertos ({pctGlobal}%)</div>
+            </div>
+            <div style={{flex:'1 1 120px',background:`${info.color}10`,borderRadius:16,padding:'16px 10px',border:`1px solid ${info.color}33`}}>
+              <div style={{fontSize:'1.6rem',lineHeight:1}}>{info.emoji}</div>
+              <div style={{fontSize:'1.05rem',fontWeight:900,color:info.color,marginTop:2}}>{diag.nivelEstimado}</div>
+              <div style={{fontSize:10,color:'#64748b',marginTop:2}}>nivel estimado</div>
+            </div>
+          </div>
+
+          {/* Barras por área */}
+          <div style={{textAlign:'left',marginBottom:16}}>
+            <div style={{fontSize:11,color:'#475569',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:10}}>Tu desempeño por área</div>
+            {areas.map(a => (
+              <div key={a.k} style={{marginBottom:10}}>
+                <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:4}}>
+                  <span style={{color:'#cbd5e1'}}>{a.ic} {a.label}</span>
+                  <span style={{color:colorPct(a.p),fontWeight:700}}>{a.c}/{a.t} · {a.p}%</span>
+                </div>
+                <div style={{height:7,background:'rgba(255,255,255,.05)',borderRadius:99,overflow:'hidden'}}>
+                  <div style={{height:'100%',width:a.p+'%',background:colorPct(a.p),borderRadius:99,transition:'width .5s'}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Qué mejorar */}
+          {mejorar.length > 0 && (
+            <div style={{textAlign:'left',background:'rgba(245,158,11,.06)',border:'1px solid rgba(245,158,11,.2)',borderRadius:12,padding:'12px 14px',marginBottom:16}}>
+              <div style={{color:'#fbbf24',fontWeight:700,fontSize:12,marginBottom:6}}>💡 Qué practicar primero</div>
+              <div style={{color:'#94a3b8',fontSize:12,lineHeight:1.6}}>
+                {mejorar.map(a => a.label).join(', ')}. ¡Son tus mayores oportunidades de crecer!
+              </div>
+            </div>
+          )}
+
+          {/* Nota: todos empiezan en Aula 1 */}
+          <p style={{color:'#475569',fontSize:11.5,lineHeight:1.6,margin:'0 0 18px'}}>
+            Empezarás en el <strong style={{color:'#94a3b8'}}>Aula 1 (A1)</strong> para construir bases sólidas. Este diagnóstico es tu punto de partida — ¡vuelve a verlo cuando quieras!
+          </p>
+
+          <button onClick={onClose}
+            style={{width:'100%',padding:'13px 0',background:`linear-gradient(135deg,${info.color},#6366f1)`,color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:'pointer',fontFamily:"'Poppins',sans-serif",boxShadow:`0 4px 18px ${info.color}33`}}>
+            ¡Entendido, a estudiar! 🚀
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [screen,    setScreen]    = useState(localStorage.getItem('token') ? 'curso' : 'home');
   const [mode,      setMode]      = useState('login');
@@ -2864,6 +3217,7 @@ export default function App() {
   const [total,     setTotal]     = useState(0);
   const [totalXP,   setTotalXP]   = useState(0);
   const [lvlUp,     setLvlUp]     = useState(false);
+  const [showDiag,  setShowDiag]  = useState(false);   // panel de resultados del diagnóstico
   const [tema,      setTema]      = useState(null);
   const [screen2,   setScreen2]   = useState('');
   const [adminVistaNivel, setAdminVistaNivel] = useState(null); // admin: ver aula de cualquier nivel
@@ -2876,6 +3230,9 @@ export default function App() {
   const [progTemas,   setProgTemas]   = useState({});   // {temaId: {completadas:[], total, completo, desbloqueado}}
   const [todosComp,   setTodosComp]   = useState(false);
   const [quizHabil,   setQuizHabil]   = useState(false);
+  const [trialInfo,   setTrialInfo]   = useState({ active: true, expired: false, daysLeft: null });
+  const [dailyTopicId,setDailyTopicId]= useState('');
+  const [isPremium,   setIsPremium]   = useState(false);
 
   const cargarProgreso = (restaurarTema=false) => {
     if (!token) return Promise.resolve();
@@ -2888,6 +3245,9 @@ export default function App() {
           setProgTemas(map);
           setTodosComp(d.todosCompletos);
           setQuizHabil(d.quizHabilitado);
+          if (d.trial)        setTrialInfo(d.trial);
+          if (d.dailyTopicId !== undefined) setDailyTopicId(d.dailyTopicId || '');
+          if (d.isPremium !== undefined)    setIsPremium(d.isPremium);
           if (restaurarTema && d.ultimoTema) {
             const temaRestaurado = d.temas.find(t => t.id === d.ultimoTema);
             if (temaRestaurado && temaRestaurado.desbloqueado) {
@@ -2941,11 +3301,20 @@ export default function App() {
 
   useEffect(()=>{
     if (!token) { return; }
+    window._alexToken = token;               // restaura el token para la voz de Mr. Alex tras recargar
     fetch(API+'/api/auth/user',{headers:authH(token)})
       .then(r=>r.ok?r.json():Promise.reject())
       .then(u=>{setUser(u);})
       .catch(()=>{localStorage.removeItem('token');setToken('');setScreen('auth');});
   },[token]);
+
+  // Al llegar al aula recién hecho el diagnóstico, abrir el panel de resultados
+  useEffect(()=>{
+    if (screen==='curso' && window._diagFresh && user?.diagnostico) {
+      window._diagFresh = false;
+      setShowDiag(true);
+    }
+  },[screen,user]);
 
 const handleAuth = async(e) => {
     e.preventDefault(); setAuthErr(''); setAuthMsg('');
@@ -2964,7 +3333,7 @@ const handleAuth = async(e) => {
 
     const body = mode==='login'
       ? { email: email, password: form.password }
-      : { name: form.name.trim(), email: email, password: form.password, englishLevel: form.englishLevel };
+      : { name: form.name.trim(), email: email, password: form.password };
 
     setAuthBusy(true);
     try {
@@ -2987,7 +3356,14 @@ const handleAuth = async(e) => {
       }
 
       localStorage.setItem('token', d.token);
-      setToken(d.token); setUser(d.user); setScreen('curso');
+      window._alexToken = d.token;           // habilita la voz real de Mr. Alex (ElevenLabs)
+      setToken(d.token); setUser(d.user);
+      // Nuevo registro: ir al placement test. Login: ir directo al aula.
+      if (mode === 'register' && !d.user?.levelAssigned) {
+        setScreen('placement');
+      } else {
+        setScreen('curso');
+      }
     } catch {
       setAuthErr('No se pudo conectar al servidor.');
     }
@@ -3320,6 +3696,19 @@ const handleAuth = async(e) => {
     </>
   );
 
+  if (screen==='placement') return (
+    <PlacementTestScreen
+      token={token}
+      userName={user?.name || ''}
+      alexSpeak={alexSpeak}
+      onFinish={(diagnostico, updatedUser) => {
+        setUser(updatedUser);
+        window._diagFresh = true;        // abre el panel de resultados al llegar al aula
+        setScreen('curso');              // todos empiezan en el Aula 1 (A1)
+      }}
+    />
+  );
+
   if (screen==='forgot') return (
     <div style={{background:'#06080f',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Poppins',sans-serif",padding:20}}>
       <style>{KF}</style>
@@ -3415,13 +3804,6 @@ const handleAuth = async(e) => {
               {showPass?'🙈':'👁️'}
             </button>
           </div>
-          {mode==='register'&&(<>
-            <label style={{display:'block',marginBottom:7,color:'#94a3b8',fontSize:13,fontWeight:500}}>Nivel inicial</label>
-            <select style={{width:'100%',padding:'12px 16px',background:'#161b26',border:'1px solid rgba(99,102,241,.12)',borderRadius:10,color:'#e2e8f0',fontSize:14,boxSizing:'border-box',marginBottom:26,fontFamily:"'Poppins',sans-serif",outline:'none'}}
-              value={form.englishLevel} onChange={e=>setForm({...form,englishLevel:e.target.value})}>
-              {['A1','A2','B1','B2','C1','C2'].map(l=><option key={l} value={l}>{l}</option>)}
-            </select>
-          </>)}
 
           {mode==='register' && (
             <p style={{margin:'-8px 0 16px',color:'#475569',fontSize:11.5,lineHeight:1.4}}>Minimo 8 caracteres, con una mayuscula, una minuscula y un numero.</p>
@@ -3449,6 +3831,7 @@ const handleAuth = async(e) => {
   return (
     <div style={{background:'#020617',minHeight:'100vh',fontFamily:"'Poppins',sans-serif",color:'#e2e8f0',position:'relative'}}>
       <style>{KF}</style>
+      {showDiag && <DiagnosticoPanel diag={user?.diagnostico} userName={user?.name||''} onClose={()=>setShowDiag(false)} />}
       <div className="aq-bar" style={{background:'linear-gradient(180deg,rgba(13,17,28,.98),rgba(9,11,21,.92))',backdropFilter:'blur(20px)',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.8rem',borderBottom:'1px solid rgba(99,102,241,0.18)',position:'sticky',top:0,zIndex:100,boxShadow:'0 6px 24px rgba(0,0,0,.4)'}}>
         <div style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}} onClick={()=>setScreen('home')}>
           <div style={{width:34,height:34,background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.95rem',boxShadow:'0 0 16px rgba(99,102,241,.4)'}}>🎓</div>
@@ -3534,22 +3917,68 @@ const handleAuth = async(e) => {
         <div style={{width:'100%',background:'#1e293b',height:10,borderRadius:8,overflow:'hidden',marginBottom:'1rem',position:'relative',boxShadow:'inset 0 1px 3px rgba(0,0,0,.4)'}}>
           <div style={{width:pctNivel+'%',background:'linear-gradient(90deg,#6366f1,#06b6d4,#10b981)',height:'100%',borderRadius:8,transition:'width .5s ease',boxShadow:'0 0 12px rgba(99,102,241,.5)'}}/>
         </div>
+
+        {/* ── Botón resultados del diagnóstico ─────────────────────────── */}
+        {user?.diagnostico && (
+          <button onClick={()=>setShowDiag(true)}
+            style={{display:'flex',alignItems:'center',gap:10,width:'100%',background:'linear-gradient(135deg,rgba(139,92,246,.12),rgba(99,102,241,.08))',border:'1px solid rgba(139,92,246,.28)',borderRadius:12,padding:'11px 16px',marginBottom:'1rem',cursor:'pointer',color:'#c4b5fd',fontFamily:"'Poppins',sans-serif",fontWeight:600,fontSize:'.82rem',transition:'background .2s'}}
+            onMouseEnter={e=>e.currentTarget.style.background='linear-gradient(135deg,rgba(139,92,246,.2),rgba(99,102,241,.14))'}
+            onMouseLeave={e=>e.currentTarget.style.background='linear-gradient(135deg,rgba(139,92,246,.12),rgba(99,102,241,.08))'}>
+            <span style={{fontSize:'1.1rem'}}>📊</span>
+            <span style={{flex:1,textAlign:'left'}}>Resultados de mi diagnóstico</span>
+            <span style={{background:'rgba(139,92,246,.2)',color:'#c4b5fd',borderRadius:8,padding:'2px 9px',fontSize:'.72rem',fontWeight:700}}>Nivel {user.diagnostico.nivelEstimado}</span>
+          </button>
+        )}
+
+        {/* ── Banner trial ─────────────────────────────────────────────── */}
+        {!isPremium && !esAdmin && (trialInfo.expired ? (
+          <div style={{background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.3)',borderRadius:14,padding:'16px 20px',marginBottom:'1rem',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+            <span style={{fontSize:'1.5rem'}}>⛔</span>
+            <div style={{flex:1,minWidth:200}}>
+              <div style={{color:'#f87171',fontWeight:700,fontSize:'.9rem'}}>Tu período de prueba gratuita terminó</div>
+              <div style={{color:'#94a3b8',fontSize:'.78rem',marginTop:2}}>Puedes explorar el contenido, pero no avanzar ni ganar XP. Contáctanos para continuar aprendiendo.</div>
+            </div>
+            <a href="mailto:adcerezov@tecmd.edu.co?subject=Quiero continuar en AulaQuest" style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',borderRadius:9,padding:'8px 18px',fontSize:'.8rem',fontWeight:700,cursor:'pointer',textDecoration:'none',whiteSpace:'nowrap'}}>
+              Contactar para continuar
+            </a>
+          </div>
+        ) : trialInfo.daysLeft !== null && (
+          <div style={{background:'rgba(245,158,11,.06)',border:'1px solid rgba(245,158,11,.25)',borderRadius:14,padding:'12px 18px',marginBottom:'1rem',display:'flex',alignItems:'center',gap:12}}>
+            <span style={{fontSize:'1.2rem'}}>⏳</span>
+            <div style={{flex:1}}>
+              <span style={{color:'#fbbf24',fontWeight:700,fontSize:'.82rem'}}>
+                {trialInfo.daysLeft === 1 ? 'Te queda 1 día de prueba gratuita' : `Te quedan ${trialInfo.daysLeft} días de prueba gratuita`}
+              </span>
+              <span style={{color:'#64748b',fontSize:'.75rem',marginLeft:8}}>· Contáctanos para continuar</span>
+            </div>
+          </div>
+        ))}
+
           <div className="aq-topics" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:'1rem'}}>          {TOPICS.map((t,idx)=>{
             const prog    = progTemas[t.id] || {};
             const completo= prog.completo || false;
             const completadas = prog.completadas || 0;
             const total   = prog.total || (vocabData[t.id]||[]).length || 0;
             // Solo primer tema desbloqueado; los demás requieren que el anterior esté completo
-            const desbloq = esAdmin ? true : (idx === 0
+            const desbloqBase = esAdmin ? true : (idx === 0
               ? true
               : (progTemas[TOPICS[idx-1]?.id]?.completo || false));
+            // Bloqueo diario: solo un tema por día para usuarios no premium
+            const esTemaDelDia = dailyTopicId === t.id;
+            const hayTemaDelDia = dailyTopicId !== '';
+            const bloqueadoDiario = !isPremium && !esAdmin && desbloqBase && !completo && hayTemaDelDia && !esTemaDelDia;
+            const desbloq = desbloqBase && !bloqueadoDiario;
             const pct     = total > 0 ? Math.round((completadas/total)*100) : 0;
             const activo  = tema?.id===t.id;
             return (
               <div key={t.id}
                 onClick={()=>{
-                  if (!desbloq) {
+                  if (!desbloqBase) {
                     setBubble('🔒 Completa el tema anterior primero para desbloquear este.');
+                    setBubbleType('err'); return;
+                  }
+                  if (bloqueadoDiario) {
+                    setBubble('🌙 Solo puedes avanzar en un tema por día. ¡Vuelve mañana para continuar!');
                     setBubbleType('err'); return;
                   }
                   setTema(activo?null:t); usedWordsRef.current=[]; setWord(null);
@@ -3577,7 +4006,8 @@ const handleAuth = async(e) => {
                 }}>
                 <div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,rgba(255,255,255,.06),transparent 45%)',pointerEvents:'none'}}/>
                 {completo && <div style={{position:'absolute',top:4,right:4,fontSize:'.6rem',background:'rgba(16,185,129,.2)',color:'#10b981',borderRadius:50,padding:'1px 5px',fontWeight:700}}>✓</div>}
-                {!desbloq && <div style={{position:'absolute',top:4,right:4,fontSize:'.65rem'}}>🔒</div>}
+                {!desbloqBase && <div style={{position:'absolute',top:4,right:4,fontSize:'.65rem'}}>🔒</div>}
+                {bloqueadoDiario && <div style={{position:'absolute',top:4,right:4,fontSize:'.65rem'}} title="Límite diario">🌙</div>}
                 <div style={{fontSize:'1.4rem',marginBottom:4}}>{t.icon}</div>
                 <div style={{fontSize:'.65rem',color:completo?'#10b981':activo?'#a5b4fc':desbloq?'#64748b':'#334155',fontWeight:activo||completo?600:400,marginBottom:3}}>{t.name}</div>
                 {desbloq && total>0 && (
