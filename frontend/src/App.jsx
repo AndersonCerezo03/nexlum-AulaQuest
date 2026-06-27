@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API = import.meta.env.VITE_API_URL || 'https://nexlum-aulaquest.onrender.com';
 const authH = (t) => ({ 'Content-Type':'application/json', 'Authorization':'Bearer '+t });
 const clean = (s) => s.toLowerCase().trim().replace(/[^a-z\s]/g,'');
 
@@ -1489,7 +1489,7 @@ function MemoryGame({ nivel, vocabData, onBack }) {
 
 // ─── MINIJUEGO: LLUVIA DE PALABRAS ───────────────────────────────────────────
 function WordRain({ nivel, token, vocabData, onBack }) {
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const API = import.meta.env.VITE_API_URL || 'https://nexlum-aulaquest.onrender.com';
   const authH = (t) => ({ Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' });
 
   const [words,      setWords]      = useState([]);   // palabras cayendo [{id,en,es,x,y,speed,answered}]
@@ -2845,7 +2845,7 @@ const NIVEL_INFO = {
   C2: { label:'C2 — Maestría',       color:'#f59e0b', emoji:'👑', desc:'Comprensión y expresión a nivel nativo.' },
 };
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://nexlum-aulaquest.onrender.com';
 const NIVEL_ORDER_PT = ['A1','A2','B1','B2','C1','C2'];
 const PASS_RATIO_PT  = 0.75; // 75% para avanzar (ej. 6 de 8)
 const passNeeded = total => Math.ceil((total || 0) * PASS_RATIO_PT);
