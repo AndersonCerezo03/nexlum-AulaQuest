@@ -3918,6 +3918,21 @@ const handleAuth = async(e) => {
           <div style={{width:pctNivel+'%',background:'linear-gradient(90deg,#6366f1,#06b6d4,#10b981)',height:'100%',borderRadius:8,transition:'width .5s ease',boxShadow:'0 0 12px rgba(99,102,241,.5)'}}/>
         </div>
 
+        {/* ── Aviso: test de diagnóstico pendiente (obligatorio) ───────── */}
+        {user && !user.diagnostico && (
+          <div style={{background:'linear-gradient(135deg,rgba(139,92,246,.16),rgba(99,102,241,.1))',border:'1px solid rgba(139,92,246,.45)',borderRadius:14,padding:'14px 18px',marginBottom:'1rem',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap',boxShadow:'0 0 24px rgba(139,92,246,.12)'}}>
+            <span style={{fontSize:'1.7rem'}}>🎓</span>
+            <div style={{flex:1,minWidth:210}}>
+              <div style={{color:'#c4b5fd',fontWeight:800,fontSize:'.92rem'}}>Aún te falta tu test de diagnóstico</div>
+              <div style={{color:'#94a3b8',fontSize:'.78rem',marginTop:2}}>Es necesario para conocer tu nivel de inglés y saber qué mejorar. Empezarás siempre en el Aula 1.</div>
+            </div>
+            <button onClick={()=>setScreen('placement')}
+              style={{background:'linear-gradient(135deg,#8b5cf6,#6366f1)',color:'#fff',border:'none',borderRadius:9,padding:'10px 22px',fontSize:'.84rem',fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',fontFamily:"'Poppins',sans-serif",boxShadow:'0 4px 16px rgba(139,92,246,.35)'}}>
+              Hacer test ahora →
+            </button>
+          </div>
+        )}
+
         {/* ── Botón resultados del diagnóstico ─────────────────────────── */}
         {user?.diagnostico && (
           <button onClick={()=>setShowDiag(true)}
