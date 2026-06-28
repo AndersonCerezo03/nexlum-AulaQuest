@@ -2,8 +2,8 @@ const router = require('express').Router();
 const auth   = require('../middleware/auth');
 
 const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
-const VOICE_EN = 'XB0fDUnXU5powFXDhCwa'; // Charlotte — inglés
-const VOICE_ES = 'pFZP5JQG7iQjIQuC4Bku'; // Lily — español natural
+const VOICE_EN = 'Ix8C14HEHgIQkJswik2o'; // El profesor de lenguas filosóficas — Mr. Alex (pronunciación clara)
+const VOICE_ES = 'Ix8C14HEHgIQkJswik2o'; // misma voz de Mr. Alex para mantener consistencia
 
 async function synthesize(text, voiceId, lang, speed) {
   const spd = lang === 'en-slow' ? 0.30 : (speed || 0.42);
