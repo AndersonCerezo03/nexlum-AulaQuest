@@ -2867,6 +2867,7 @@ function PlacementTestScreen({ token, userName, alexSpeak, onFinish }) {
   const [isListening, setIsListening] = useState(false);
   const [pronResult,  setPronResult]  = useState(null);
   const [errorMsg,    setErrorMsg]    = useState('');
+  const [doneUser,    setDoneUser]    = useState(null);  // user listo tras enviar; pantalla "Empecemos a aprender"
   const answersRef = useRef([]);
 
   // Cargar el test de diagnóstico (lista ordenada por dificultad)
@@ -2940,7 +2941,8 @@ function PlacementTestScreen({ token, userName, alexSpeak, onFinish }) {
       });
       const d = await r.json();
       if (!r.ok) { setErrorMsg(d.msg); setPhase('error'); return; }
-      onFinish(d.diagnostico, d.user); // el padre lleva al alumno al Aula 1
+      setDoneUser(d.user);     // sin mostrar el nivel: solo "Empecemos a aprender"
+      setPhase('done');
     } catch { setErrorMsg('Error de conexión.'); setPhase('error'); }
   }
 
@@ -2962,6 +2964,30 @@ function PlacementTestScreen({ token, userName, alexSpeak, onFinish }) {
       <div style={{textAlign:'center',color:'#94a3b8'}}><div style={{fontSize:'2.5rem',marginBottom:12}}>🧠</div><p style={{fontWeight:600}}>Analizando tu diagnóstico…</p></div>
     </div>
   );
+
+  // Fin del test: sin mostrar nivel, solo "Empecemos a aprender" → Aula 1
+  if (phase === 'done') {
+    const C = '#8b5cf6';
+    return (
+      <div style={{background:'#06080f',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Poppins',sans-serif",padding:24}}>
+        <div style={{width:'100%',maxWidth:460,textAlign:'center'}}>
+          <div style={{fontSize:'3.6rem',marginBottom:6,lineHeight:1}}>🎉</div>
+          <div style={{background:'#0d1117',borderRadius:24,padding:'38px 30px',border:`1px solid ${C}33`,boxShadow:`0 0 50px ${C}10`}}>
+            <h2 style={{color:C,margin:'0 0 10px',fontSize:'1.5rem',fontWeight:900}}>¡Terminaste tu diagnóstico, {userName}!</h2>
+            <p style={{color:'#94a3b8',fontSize:14,lineHeight:1.6,margin:'0 0 26px'}}>
+              ¡Buen trabajo! Vas a empezar desde el <strong style={{color:'#cbd5e1'}}>Aula 1</strong> para construir bases sólidas, paso a paso. 💪
+            </p>
+            <button onClick={() => onFinish(doneUser)}
+              style={{width:'100%',padding:'15px 0',background:`linear-gradient(135deg,${C},#6366f1)`,color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:16,cursor:'pointer',fontFamily:"'Poppins',sans-serif",boxShadow:`0 4px 20px ${C}40`,transition:'transform .15s'}}
+              onMouseEnter={e=>e.currentTarget.style.transform='scale(1.02)'}
+              onMouseLeave={e=>e.currentTarget.style.transform='scale(1)'}>
+              Empecemos a aprender 🚀
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Intro del diagnóstico
   if (phase === 'intro') {
@@ -3119,7 +3145,7 @@ const DIAG_AREAS = [
 
 function DiagnosticoPanel({ diag, userName, onClose }) {
   if (!diag) return null;
-  const info = NIVEL_INFO[diag.nivelEstimado] || NIVEL_INFO['A1'];
+  const info = { color: '#8b5cf6' }; // color fijo: no mostramos nivel
   const pct = (c, t) => (t > 0 ? Math.round((c / t) * 100) : 0);
   const colorPct = p => (p >= 70 ? '#34d399' : p >= 40 ? '#fbbf24' : '#f87171');
   const pctGlobal = pct(diag.puntaje, diag.total);
@@ -3141,16 +3167,11 @@ function DiagnosticoPanel({ diag, userName, onClose }) {
         <div style={{padding:'10px 22px 22px',textAlign:'center'}}>
           <p style={{color:'#64748b',fontSize:13,margin:'4px 0 14px'}}>Hola <strong style={{color:'#94a3b8'}}>{userName}</strong>, así estuvo tu prueba:</p>
 
-          {/* Nota global + nivel estimado */}
-          <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap',marginBottom:18}}>
-            <div style={{flex:'1 1 120px',background:'rgba(255,255,255,.03)',borderRadius:16,padding:'16px 10px',border:'1px solid rgba(255,255,255,.06)'}}>
-              <div style={{fontSize:'1.9rem',fontWeight:900,color:colorPct(pctGlobal),lineHeight:1}}>{diag.puntaje}<span style={{fontSize:'1rem',color:'#475569'}}>/{diag.total}</span></div>
-              <div style={{fontSize:11,color:'#64748b',marginTop:4}}>aciertos ({pctGlobal}%)</div>
-            </div>
-            <div style={{flex:'1 1 120px',background:`${info.color}10`,borderRadius:16,padding:'16px 10px',border:`1px solid ${info.color}33`}}>
-              <div style={{fontSize:'1.6rem',lineHeight:1}}>{info.emoji}</div>
-              <div style={{fontSize:'1.05rem',fontWeight:900,color:info.color,marginTop:2}}>{diag.nivelEstimado}</div>
-              <div style={{fontSize:10,color:'#64748b',marginTop:2}}>nivel estimado</div>
+          {/* Nota global (sin etiqueta de nivel) */}
+          <div style={{marginBottom:18}}>
+            <div style={{background:'rgba(255,255,255,.03)',borderRadius:16,padding:'18px 10px',border:'1px solid rgba(255,255,255,.06)'}}>
+              <div style={{fontSize:'2.1rem',fontWeight:900,color:colorPct(pctGlobal),lineHeight:1}}>{diag.puntaje}<span style={{fontSize:'1.1rem',color:'#475569'}}>/{diag.total}</span></div>
+              <div style={{fontSize:11.5,color:'#64748b',marginTop:5}}>respuestas correctas ({pctGlobal}%)</div>
             </div>
           </div>
 
@@ -3307,14 +3328,6 @@ export default function App() {
       .then(u=>{setUser(u);})
       .catch(()=>{localStorage.removeItem('token');setToken('');setScreen('auth');});
   },[token]);
-
-  // Al llegar al aula recién hecho el diagnóstico, abrir el panel de resultados
-  useEffect(()=>{
-    if (screen==='curso' && window._diagFresh && user?.diagnostico) {
-      window._diagFresh = false;
-      setShowDiag(true);
-    }
-  },[screen,user]);
 
 const handleAuth = async(e) => {
     e.preventDefault(); setAuthErr(''); setAuthMsg('');
@@ -3701,10 +3714,9 @@ const handleAuth = async(e) => {
       token={token}
       userName={user?.name || ''}
       alexSpeak={alexSpeak}
-      onFinish={(diagnostico, updatedUser) => {
+      onFinish={(updatedUser) => {
         setUser(updatedUser);
-        window._diagFresh = true;        // abre el panel de resultados al llegar al aula
-        setScreen('curso');              // todos empiezan en el Aula 1 (A1)
+        setScreen('curso');              // todos empiezan en el Aula 1 (A1), sin mostrar nivel
       }}
     />
   );
@@ -3941,7 +3953,7 @@ const handleAuth = async(e) => {
             onMouseLeave={e=>e.currentTarget.style.background='linear-gradient(135deg,rgba(139,92,246,.12),rgba(99,102,241,.08))'}>
             <span style={{fontSize:'1.1rem'}}>📊</span>
             <span style={{flex:1,textAlign:'left'}}>Resultados de mi diagnóstico</span>
-            <span style={{background:'rgba(139,92,246,.2)',color:'#c4b5fd',borderRadius:8,padding:'2px 9px',fontSize:'.72rem',fontWeight:700}}>Nivel {user.diagnostico.nivelEstimado}</span>
+            <span style={{color:'#8b5cf6',fontSize:'1rem'}}>→</span>
           </button>
         )}
 
