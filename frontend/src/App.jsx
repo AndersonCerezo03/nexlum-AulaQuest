@@ -2857,7 +2857,7 @@ function wordSim(a, b) {
   return [...wa].filter(w => wb.has(w)).length / Math.max(wa.size, wb.size);
 }
 
-function PlacementTestScreen({ token, userName, alexSpeak, onFinish }) {
+function PlacementTestScreen({ token, userName, alexSpeak, onFinish, onBack }) {
   // Test de DIAGNÓSTICO lineal: una sola pasada de preguntas (fácil → difícil).
   const [preguntas,   setPreguntas]   = useState([]);
   const [phase,       setPhase]       = useState('loading'); // loading|intro|question|submitting|error
@@ -2877,17 +2877,33 @@ function PlacementTestScreen({ token, userName, alexSpeak, onFinish }) {
       .then(d => {
         if (!d.preguntas) { setErrorMsg(d.msg || 'Error al cargar el test.'); setPhase('error'); return; }
         setPreguntas(d.preguntas);
+        // Retomar si el alumno salió a mitad del test (botón Volver)
+        try {
+          const saved = JSON.parse(localStorage.getItem('_placementProgress') || 'null');
+          if (saved && Array.isArray(saved.answers) && saved.idx > 0 && saved.idx < d.preguntas.length) {
+            answersRef.current = saved.answers;
+            setIdx(saved.idx);
+            setPhase('question');   // retoma justo donde quedó
+            return;
+          }
+        } catch {}
         setPhase('intro');
       })
       .catch(() => { setErrorMsg('No se pudo conectar al servidor.'); setPhase('error'); });
   }, [token]);
+
+  // Salir al aula guardando el punto donde quedó
+  function handleBack() {
+    try { localStorage.setItem('_placementProgress', JSON.stringify({ idx, answers: answersRef.current })); } catch {}
+    onBack();
+  }
 
   // Auto-speak para listening y pronunciación al cargar la pregunta
   useEffect(() => {
     if (phase !== 'question' || !preguntas[idx]) return;
     const q = preguntas[idx];
     if ((q.tipo === 'listening' || q.tipo === 'pronunciation') && q.audio) {
-      const t = setTimeout(() => alexSpeak(q.audio, 0.8), 500);
+      const t = setTimeout(() => alexSpeak(q.audio, 0.62), 500); // lento y claro
       return () => clearTimeout(t);
     }
   }, [phase, idx, preguntas]);
@@ -2960,6 +2976,7 @@ function PlacementTestScreen({ token, userName, alexSpeak, onFinish }) {
       });
       const d = await r.json();
       if (!r.ok) { setErrorMsg(d.msg); setPhase('error'); return; }
+      try { localStorage.removeItem('_placementProgress'); } catch {} // ya completó: limpiar el guardado
       setDoneUser(d.user);     // sin mostrar el nivel: solo "Empecemos a aprender"
       setPhase('done');
     } catch { setErrorMsg('Error de conexión.'); setPhase('error'); }
@@ -3047,9 +3064,14 @@ function PlacementTestScreen({ token, userName, alexSpeak, onFinish }) {
       <div style={{background:'#06080f',minHeight:'100vh',fontFamily:"'Poppins',sans-serif",color:'#e2e8f0',display:'flex',flexDirection:'column',alignItems:'center',padding:'24px 18px'}}>
         {/* Header */}
         <div style={{width:'100%',maxWidth:560,marginBottom:18}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:7}}>
-            <span style={{color:C,fontWeight:700,fontSize:12}}>🎓 Test de diagnóstico</span>
-            <span style={{color:'#334155',fontSize:11}}>{idx+1} / {preguntas.length}</span>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8,gap:10}}>
+            <button onClick={handleBack} title="Volver al aula (guarda tu avance)"
+              style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.12)',borderRadius:8,padding:'5px 12px',color:'#94a3b8',fontFamily:"'Poppins',sans-serif",fontSize:11.5,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap',transition:'background .2s'}}
+              onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.1)'} onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.05)'}>
+              ← Volver al aula
+            </button>
+            <span style={{color:C,fontWeight:700,fontSize:12,flex:1,textAlign:'center'}}>🎓 Diagnóstico</span>
+            <span style={{color:'#334155',fontSize:11,whiteSpace:'nowrap'}}>{idx+1} / {preguntas.length}</span>
           </div>
           <div style={{height:5,background:'rgba(255,255,255,.05)',borderRadius:99,overflow:'hidden'}}>
             <div style={{height:'100%',width:progPct+'%',background:`linear-gradient(90deg,${C},#6366f1)`,borderRadius:99,transition:'width .4s'}}/>
@@ -3075,12 +3097,12 @@ function PlacementTestScreen({ token, userName, alexSpeak, onFinish }) {
           {/* Botones escuchar — normal y más despacio (listening y pronunciación) */}
           {(q.tipo === 'listening' || q.tipo === 'pronunciation') && q.audio && (
             <div style={{display:'flex',gap:8,marginBottom:14}}>
-              <button onClick={() => alexSpeak(q.audio, 0.85)}
+              <button onClick={() => alexSpeak(q.audio, 0.62)}
                 style={{flex:2,display:'flex',alignItems:'center',gap:8,background:`${C}15`,border:`1px solid ${C}35`,borderRadius:12,padding:'10px 14px',cursor:'pointer',color:C,fontFamily:"'Poppins',sans-serif",fontWeight:600,fontSize:13,justifyContent:'center',transition:'opacity .2s'}}
                 onMouseEnter={e=>e.currentTarget.style.opacity='.8'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
                 🎧 {q.tipo === 'pronunciation' ? 'Escuchar frase' : 'Escuchar'}
               </button>
-              <button onClick={() => alexSpeak(q.audio, 0.5)} title="Mr. Alex habla más despacio"
+              <button onClick={() => alexSpeak(q.audio, 0.42)} title="Mr. Alex habla aún más despacio"
                 style={{flex:1,display:'flex',alignItems:'center',gap:6,background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,padding:'10px 12px',cursor:'pointer',color:'#94a3b8',fontFamily:"'Poppins',sans-serif",fontWeight:600,fontSize:12.5,justifyContent:'center',transition:'opacity .2s'}}
                 onMouseEnter={e=>e.currentTarget.style.opacity='.8'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
                 🐢 Despacio
@@ -3643,7 +3665,15 @@ const handleAuth = async(e) => {
           ()=>{ setOrbState('listening'); setBubble('🎤 Otra vez: ' + word.en + ' (' + word.es + ')'); setBubbleType(''); });
       }
     };
-    rec.start();
+    // Si start() falla (mic ocupado o reconocimiento ya activo), liberar todo para poder reintentar
+    try {
+      rec.start();
+    } catch (e) {
+      window._alexListening = false;
+      setListening(false);
+      setOrbState('idle');
+      setBubble('🎤 Toca "Pronunciar" de nuevo para hablar.'); setBubbleType('');
+    }
   };
 
   const xp = user?.experiencePoints || 0;
@@ -3737,6 +3767,7 @@ const handleAuth = async(e) => {
         setUser(updatedUser);
         setScreen('curso');              // todos empiezan en el Aula 1 (A1), sin mostrar nivel
       }}
+      onBack={() => setScreen('curso')}  // volver al aula guardando el avance del test
     />
   );
 
