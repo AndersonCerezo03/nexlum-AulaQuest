@@ -2905,17 +2905,36 @@ function PlacementTestScreen({ token, userName, alexSpeak, onFinish }) {
   function startPronunciation(q) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { resolvePron(false, q); return; }
+    // Silenciar a Mr. Alex para que no hable encima del usuario y el micrófono lo escuche bien
+    window._alexListening = true;
+    if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
+    window.speechSynthesis && window.speechSynthesis.cancel();
+
     const rec = new SR();
     rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 5;
-    setIsListening(true);
-    rec.onresult = e => {
+    let silenceTimer = null, resolved = false;
+    const done = (ok) => {
+      if (resolved) return; resolved = true;
+      if (silenceTimer) clearTimeout(silenceTimer);
+      window._alexListening = false;   // Mr. Alex puede volver a hablar
       setIsListening(false);
+      resolvePron(ok, q);
+    };
+    setIsListening(true);
+    rec.onstart = () => {
+      window._alexListening = true;
+      if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
+      window.speechSynthesis && window.speechSynthesis.cancel();
+      silenceTimer = setTimeout(() => { try { rec.stop(); } catch(e){} }, 8000); // hasta 8s para hablar
+    };
+    rec.onresult = e => {
       const spokenList = Array.from(e.results[0]).map(r => r.transcript.toLowerCase().trim().replace(/[^a-z\s]/g,''));
       const target = (q.target || '').toLowerCase().trim().replace(/[^a-z\s]/g,'');
       const ok = spokenList.some(s => s.includes(target) || target.includes(s) || wordSim(s, target) >= 0.55);
-      resolvePron(ok, q);
+      done(ok);
     };
-    rec.onerror = () => { setIsListening(false); resolvePron(false, q); };
+    rec.onerror = () => done(false);
+    rec.onend   = () => done(false); // red de seguridad (idempotente): si no hubo voz, continúa
     rec.start();
   }
 
