@@ -4413,7 +4413,7 @@ const handleAuth = async(e) => {
                   window.speechSynthesis&&window.speechSynthesis.cancel();
                   const tok=window._alexToken||token||'';
                   try {
-                    const r=await fetch('https://nexlum-aulaquest.onrender.com/api/tts/speak-slow',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({text:word.en})});
+                    const r=await fetch(API+'/api/tts/speak-slow',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({text:word.en})});
                     if(r.ok){const blob=await r.blob();const url=URL.createObjectURL(blob);const a=new Audio(url);_currentAudio=a;a.play();}
                     else throw new Error();
                   } catch {

@@ -1,35 +1,33 @@
 const router = require('express').Router();
 const auth   = require('../middleware/auth');
 
-const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
-const VOICE_EN = 'Ix8C14HEHgIQkJswik2o'; // El profesor de lenguas filosóficas — Mr. Alex (pronunciación clara)
-const VOICE_ES = 'Ix8C14HEHgIQkJswik2o'; // misma voz de Mr. Alex para mantener consistencia
+// Voz de Mr. Alex con OpenAI TTS — clara y entendible para los aprendices.
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const VOICE_MRALEX   = 'onyx';     // voz masculina clara (alloy, echo, fable, onyx, nova, shimmer)
+const TTS_MODEL      = 'tts-1';    // rápido y económico (tts-1-hd = más calidad, más caro)
 
-async function synthesize(text, voiceId, lang, speed) {
-  const spd = lang === 'en-slow' ? 0.30 : (speed || 0.42);
-  const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-    {
-      method: 'POST',
-      headers: {
-        'xi-api-key':   ELEVEN_API_KEY,
-        'Content-Type': 'application/json',
-        'Accept':       'audio/mpeg',
-      },
-      body: JSON.stringify({
-        text,
-        model_id: 'eleven_multilingual_v2',
-        voice_settings: {
-          stability:        1.0,
-          similarity_boost: 1.0,
-          speed:            spd,
-          style:            0.0,
-          use_speaker_boost: true,
-        },
-      }),
-    }
-  );
-  if (!response.ok) throw new Error('TTS error ' + lang);
+// Genera audio MP3 con OpenAI. La velocidad fina la ajusta el frontend con playbackRate.
+async function synthesize(text, lang) {
+  const speed = lang === 'en-slow' ? 0.75 : 1.0; // 0.25–4.0 (1.0 = normal)
+  const response = await fetch('https://api.openai.com/v1/audio/speech', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + OPENAI_API_KEY,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      model:           TTS_MODEL,
+      input:           text,
+      voice:           VOICE_MRALEX,
+      speed,
+      response_format: 'mp3',
+    }),
+  });
+  if (!response.ok) {
+    let detail = '';
+    try { detail = (await response.text()).slice(0, 200); } catch (e) {}
+    throw new Error('TTS error ' + lang + ' (' + response.status + ') ' + detail);
+  }
   return response.arrayBuffer();
 }
 
@@ -38,7 +36,7 @@ router.post('/speak', auth, async function(req, res) {
   try {
     const { text } = req.body;
     if (!text) return res.status(400).json({ msg: 'Falta el texto' });
-    const buf = await synthesize(text, VOICE_EN, 'en');
+    const buf = await synthesize(text, 'en');
     res.setHeader('Content-Type', 'audio/mpeg');
     res.send(Buffer.from(buf));
   } catch(err) {
@@ -51,7 +49,7 @@ router.post('/speak-es', auth, async function(req, res) {
   try {
     const { text } = req.body;
     if (!text) return res.status(400).json({ msg: 'Falta el texto' });
-    const buf = await synthesize(text, VOICE_ES, 'es');
+    const buf = await synthesize(text, 'es');
     res.setHeader('Content-Type', 'audio/mpeg');
     res.send(Buffer.from(buf));
   } catch(err) {
@@ -59,12 +57,12 @@ router.post('/speak-es', auth, async function(req, res) {
   }
 });
 
-// POST /api/tts/speak-slow — modo tortuga, super lento
+// POST /api/tts/speak-slow — modo tortuga, súper lento
 router.post('/speak-slow', auth, async function(req, res) {
   try {
     const { text } = req.body;
     if (!text) return res.status(400).json({ msg: 'Falta el texto' });
-    const buf = await synthesize(text, VOICE_EN, 'en-slow');
+    const buf = await synthesize(text, 'en-slow');
     res.setHeader('Content-Type', 'audio/mpeg');
     res.send(Buffer.from(buf));
   } catch(err) {
