@@ -149,6 +149,7 @@ function playAudio(url, rate, onEnd) {
 
 // Alex habla en inglés y luego en español
 async function alexSpeakBilingual(enText, esText, token, onEnd) {
+  const mySeq = ++_alexCallSeq; // si se llama stopAlex (cierre del panel), esta reproducción se corta
   // onEnd se llama UNA sola vez. Watchdog: libera el flujo aunque un audio de la
   // secuencia se cuelgue, para que la práctica no quede trabada en "speaking".
   let done = false, guard = null;
@@ -184,6 +185,7 @@ async function alexSpeakBilingual(enText, esText, token, onEnd) {
     const urlEs = URL.createObjectURL(blobEs);
 
     const playSeq = (steps, idx) => {
+      if (mySeq !== _alexCallSeq) { finish(); return; } // se cerró el panel / se pidió detener
       if (idx >= steps.length) { finish(); return; }
       const step = steps[idx];
       if (step.pause) { setTimeout(() => playSeq(steps, idx+1), step.pause); return; }
@@ -209,8 +211,18 @@ async function alexSpeakBilingual(enText, esText, token, onEnd) {
 // Cache de audio para no repetir llamadas
 const _ttsCache = {};
 let _currentAudio = null;
+let _alexCallSeq = 0; // identifica cada reproducción; stopAlex lo cambia para cortar lo que esté sonando
+
+// Detiene TODA la voz de Mr. Alex: el audio actual, las secuencias en curso y la voz del navegador
+function stopAlex() {
+  _alexCallSeq++;
+  if (_currentAudio) { try { _currentAudio.pause(); _currentAudio.currentTime = 0; } catch(e){} _currentAudio = null; }
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  window.responsiveVoice && window.responsiveVoice.cancel();
+}
 
 function alexSpeak(text, rate, onEnd) {
+  const mySeq = ++_alexCallSeq; // si se llama stopAlex (cierre del panel), esta reproducción se corta
   // onEnd se llama UNA sola vez. Watchdog: si el audio nunca dispara su evento
   // de fin (bug de Web Speech, blob inválido o red lenta), el flujo se libera igual
   // para que la práctica del aula no se quede trabada esperando para siempre.
@@ -235,7 +247,7 @@ function alexSpeak(text, rate, onEnd) {
   };
 
   const playUrl = (url) => {
-    if (window._alexListening) { finish(); return; }
+    if (window._alexListening || mySeq !== _alexCallSeq) { finish(); return; } // cerró el panel / se pidió detener
     const audio = new Audio(url);
     audio.playbackRate = rate || 0.95;
     _currentAudio = audio;
@@ -3457,6 +3469,7 @@ const handleAuth = async(e) => {
   };
 
   const logout = () => {
+    stopAlex();                 // detener la voz de Mr. Alex al salir
     localStorage.removeItem('token'); window._alexToken = ''; setToken(''); setUser(null);
     setWord(null); setCloudOpen(false); setScreen('home'); setAdminVistaNivel(null);
   };
@@ -3528,10 +3541,11 @@ const handleAuth = async(e) => {
   };
 
   const closeCloud = () => {
+    stopAlex();                 // detener la voz de Mr. Alex al cerrar el panel
+    window._alexListening = false;
     setCloudOpen(false); setOrbState('idle'); setWord(null);
     // Guardar posición al salir
     if (tema) fetch(API+'/api/practice/ultimo-tema',{method:'POST',headers:authH(token),body:JSON.stringify({temaId:tema.id})}).catch(()=>{});
-    window.speechSynthesis && window.speechSynthesis.cancel();
   };
 
   const usedWordsRef = useRef([]); // useRef evita problemas de closure stale
