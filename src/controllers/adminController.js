@@ -199,6 +199,8 @@ const getStudent = function(req, res) {
           role: u.role,
           englishLevel: u.englishLevel,
           emailVerified: u.emailVerified,
+          interviewUnlocked: u.interviewUnlocked || false,
+          interviewRequestedAt: u.interviewRequestedAt || null,
           experiencePoints: u.experiencePoints || 0,
           wordsCorrect: u.wordsCorrect || 0,
           practiceCount: u.practiceCount || 0,
@@ -240,6 +242,9 @@ const updateStudent = function(req, res) {
   }
   if (typeof req.body.emailVerified === 'boolean') {
     cambios.emailVerified = req.body.emailVerified;
+  }
+  if (typeof req.body.interviewUnlocked === 'boolean') {
+    cambios.interviewUnlocked = req.body.interviewUnlocked;
   }
 
   if (Object.keys(cambios).length === 0) {

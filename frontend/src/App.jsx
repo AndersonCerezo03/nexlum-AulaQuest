@@ -1860,6 +1860,23 @@ function AdminPanel({ token, user, onBack, onVerNivel }) {
       .catch(()=>{ setAccionBusy(false); setAccionMsg('❌ Error de conexion'); });
   };
 
+  const toggleEntrevista = (id, valor) => {
+    setAccionBusy(true); setAccionMsg('');
+    fetch(API + '/api/admin/student/' + id, {
+      method:'PUT',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ interviewUnlocked: valor })
+    })
+      .then(r=>r.json().then(d=>({ok:r.ok,d})))
+      .then(({ok,d})=>{
+        setAccionBusy(false);
+        if (!ok) { setAccionMsg('❌ ' + (d.msg||'No se pudo')); return; }
+        setAccionMsg('✅ Entrevistas ' + (valor?'DESBLOQUEADAS':'bloqueadas') + ' para este alumno');
+        setDetalle(prev=>({ ...prev, [id]: { ...(prev[id]||{}), interviewUnlocked: valor } }));
+      })
+      .catch(()=>{ setAccionBusy(false); setAccionMsg('❌ Error de conexion'); });
+  };
+
   const eliminarAlumno = (id) => {
     setAccionBusy(true); setAccionMsg('');
     fetch(API + '/api/admin/student/' + id, {
@@ -2181,6 +2198,22 @@ function AdminPanel({ token, user, onBack, onVerNivel }) {
                                       <span>🕒 Ultima actividad: {fmtFecha(d.lastActive)}</span>
                                       <span>{d.emailVerified ? '✅ Correo confirmado' : '⚠️ Correo sin confirmar'}</span>
                                       <span>🏅 Niveles aprobados: {d.nivelesAprobados.length ? d.nivelesAprobados.join(', ') : 'ninguno'}</span>
+                                    </div>
+
+                                    {/* Acceso a Entrevistas con IA */}
+                                    <div style={{display:'flex',alignItems:'center',gap:10,background:'rgba(99,102,241,.06)',border:'1px solid rgba(99,102,241,.18)',borderRadius:10,padding:'10px 12px',marginBottom:14,flexWrap:'wrap'}}>
+                                      <span style={{fontSize:'1.05rem'}}>💼</span>
+                                      <div style={{flex:1,minWidth:160}}>
+                                        <div style={{fontSize:'.72rem',fontWeight:700,color:'#e2e8f0'}}>Entrevistas con IA</div>
+                                        <div style={{fontSize:'.62rem',color:d.interviewUnlocked?'#34d399':'#f87171'}}>
+                                          {d.interviewUnlocked ? '✅ Desbloqueadas' : '🔒 Bloqueadas'}
+                                          {(d.interviewRequestedAt && !d.interviewUnlocked) ? ' · solicitó el '+fmtFecha(d.interviewRequestedAt) : ''}
+                                        </div>
+                                      </div>
+                                      <button onClick={()=>toggleEntrevista(d._id, !d.interviewUnlocked)} disabled={accionBusy}
+                                        style={{background:d.interviewUnlocked?'rgba(239,68,68,.12)':'linear-gradient(135deg,#6366f1,#8b5cf6)',color:d.interviewUnlocked?'#f87171':'#fff',border:d.interviewUnlocked?'1px solid rgba(239,68,68,.3)':'none',borderRadius:8,padding:'8px 16px',fontSize:'.68rem',fontWeight:700,cursor:accionBusy?'wait':'pointer',fontFamily:"'Poppins',sans-serif",whiteSpace:'nowrap'}}>
+                                        {d.interviewUnlocked ? 'Bloquear' : 'Desbloquear'}
+                                      </button>
                                     </div>
 
                                     {/* Aula: progreso por cada nivel */}
@@ -3298,6 +3331,9 @@ export default function App() {
   const [nivelMenu, setNivelMenu] = useState(false);
 
   const esAdmin = user?.role === 'admin';
+  const interviewLocked = !esAdmin && !(user?.interviewUnlocked); // entrevistas bloqueadas hasta que el admin las habilite
+  const [showInterviewModal, setShowInterviewModal] = useState(false);
+  const [interviewReqState,  setInterviewReqState]  = useState(''); // ''|'sending'|'sent'|'error'
   const nivel = (esAdmin && adminVistaNivel) ? adminVistaNivel : (user?.englishLevel || 'A1');
   const [TOPICS,      setTOPICS]      = useState([]);
   const [vocabData,   setVocabData]   = useState({});
@@ -3546,6 +3582,15 @@ const handleAuth = async(e) => {
     setCloudOpen(false); setOrbState('idle'); setWord(null);
     // Guardar posición al salir
     if (tema) fetch(API+'/api/practice/ultimo-tema',{method:'POST',headers:authH(token),body:JSON.stringify({temaId:tema.id})}).catch(()=>{});
+  };
+
+  // Solicitar a soporte el desbloqueo de las entrevistas
+  const solicitarEntrevista = async () => {
+    setInterviewReqState('sending');
+    try {
+      const r = await fetch(API+'/api/interview/request-access', { method:'POST', headers:authH(token) });
+      setInterviewReqState(r.ok ? 'sent' : 'error');
+    } catch { setInterviewReqState('error'); }
   };
 
   const usedWordsRef = useRef([]); // useRef evita problemas de closure stale
@@ -3908,6 +3953,30 @@ const handleAuth = async(e) => {
     <div style={{background:'#020617',minHeight:'100vh',fontFamily:"'Poppins',sans-serif",color:'#e2e8f0',position:'relative'}}>
       <style>{KF}</style>
       {showDiag && <DiagnosticoPanel diag={user?.diagnostico} userName={user?.name||''} onClose={()=>setShowDiag(false)} />}
+      {showInterviewModal && (
+        <div onClick={()=>setShowInterviewModal(false)} style={{position:'fixed',inset:0,background:'rgba(2,4,10,.8)',backdropFilter:'blur(4px)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:18,fontFamily:"'Poppins',sans-serif"}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:420,background:'#0d1117',borderRadius:22,border:'1px solid rgba(99,102,241,.3)',padding:'30px 26px',textAlign:'center',boxShadow:'0 12px 50px rgba(0,0,0,.7)'}}>
+            <div style={{fontSize:'2.9rem',marginBottom:8}}>🔒</div>
+            <h2 style={{color:'#a5b4fc',margin:'0 0 10px',fontSize:'1.2rem',fontWeight:900}}>Entrevistas bloqueadas</h2>
+            {interviewReqState==='sent' ? (
+              <>
+                <p style={{color:'#34d399',fontSize:14,lineHeight:1.6,marginBottom:22}}>✅ ¡Solicitud enviada! Soporte revisará tu acceso y te contactará pronto por correo.</p>
+                <button onClick={()=>setShowInterviewModal(false)} style={{width:'100%',padding:'13px 0',background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Entendido</button>
+              </>
+            ) : (
+              <>
+                <p style={{color:'#94a3b8',fontSize:13.5,lineHeight:1.6,marginBottom:18}}>Las entrevistas con IA requieren acceso. Solicítalo a soporte y te avisaremos cuando esté habilitado para tu cuenta.</p>
+                {interviewReqState==='error' && <p style={{color:'#f87171',fontSize:12.5,marginBottom:12}}>No se pudo enviar. Revisa tu conexión e intenta de nuevo.</p>}
+                <button onClick={solicitarEntrevista} disabled={interviewReqState==='sending'}
+                  style={{width:'100%',padding:'13px 0',background:interviewReqState==='sending'?'#3730a3':'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:interviewReqState==='sending'?'wait':'pointer',fontFamily:"'Poppins',sans-serif",marginBottom:10}}>
+                  {interviewReqState==='sending'?'Enviando…':'Solicitar acceso a soporte'}
+                </button>
+                <button onClick={()=>setShowInterviewModal(false)} style={{width:'100%',padding:'10px 0',background:'none',color:'#64748b',border:'none',borderRadius:10,fontWeight:600,fontSize:13,cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Cancelar</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       <div className="aq-bar" style={{background:'linear-gradient(180deg,rgba(13,17,28,.98),rgba(9,11,21,.92))',backdropFilter:'blur(20px)',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.8rem',borderBottom:'1px solid rgba(99,102,241,0.18)',position:'sticky',top:0,zIndex:100,boxShadow:'0 6px 24px rgba(0,0,0,.4)'}}>
         <div style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}} onClick={()=>setScreen('home')}>
           <div style={{width:34,height:34,background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.95rem',boxShadow:'0 0 16px rgba(99,102,241,.4)'}}>🎓</div>
@@ -4161,14 +4230,15 @@ const handleAuth = async(e) => {
             return (
               <div style={{display:'flex',gap:14,flexWrap:'wrap'}}>
                 {ENTREVISTADORES.map(e=>(
-                  <div key={e.id} onClick={()=>setScreen2(e.id)}
+                  <div key={e.id} onClick={()=>{ if(interviewLocked){ setInterviewReqState(''); setShowInterviewModal(true); } else { setScreen2(e.id); } }}
                     onMouseEnter={ev=>{ev.currentTarget.style.transform='translateY(-6px)';ev.currentTarget.style.boxShadow=`0 16px 40px rgba(${e.accent},.4)`;}}
                     onMouseLeave={ev=>{ev.currentTarget.style.transform='translateY(0)';ev.currentTarget.style.boxShadow='0 8px 20px rgba(0,0,0,.4)';}}
                     style={{flex:'1 1 200px',minWidth:0,cursor:'pointer',borderRadius:16,overflow:'hidden',border:`1px solid rgba(${e.accent},.3)`,background:'rgba(15,23,42,.6)',boxShadow:'0 8px 20px rgba(0,0,0,.4)',transition:'transform .25s ease, box-shadow .25s ease'}}>
                     <div style={{height:130,background:e.grad,display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
-                      <span style={{fontSize:'3.4rem',filter:'drop-shadow(0 4px 12px rgba(0,0,0,.5))'}}>{e.emoji}</span>
+                      <span style={{fontSize:'3.4rem',filter:interviewLocked?'drop-shadow(0 4px 12px rgba(0,0,0,.5)) grayscale(.6)':'drop-shadow(0 4px 12px rgba(0,0,0,.5))',opacity:interviewLocked?0.6:1}}>{e.emoji}</span>
                       <div style={{position:'absolute',inset:0,background:'radial-gradient(circle at 50% 120%,rgba(255,255,255,.25),transparent 60%)'}}/>
-                      <span style={{position:'absolute',top:10,right:10,background:'rgba(0,0,0,.35)',backdropFilter:'blur(4px)',color:'#fff',fontSize:'.58rem',fontWeight:700,padding:'3px 8px',borderRadius:50}}>ELEGIR ▶</span>
+                      {interviewLocked && <div style={{position:'absolute',inset:0,background:'rgba(2,6,23,.45)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'2.2rem'}}>🔒</div>}
+                      <span style={{position:'absolute',top:10,right:10,background:'rgba(0,0,0,.35)',backdropFilter:'blur(4px)',color:'#fff',fontSize:'.58rem',fontWeight:700,padding:'3px 8px',borderRadius:50}}>{interviewLocked?'🔒 BLOQUEADO':'ELEGIR ▶'}</span>
                     </div>
                     <div style={{padding:'12px 14px'}}>
                       <div style={{fontSize:'.98rem',fontWeight:800,color:'#f1f5f9'}}>{e.nombre}</div>

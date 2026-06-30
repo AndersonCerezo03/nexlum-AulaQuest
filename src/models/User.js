@@ -22,6 +22,10 @@ const userSchema = new mongoose.Schema({
   trialStartDate: { type: Date },
   isPremium:      { type: Boolean, default: false },
 
+  // Entrevistas con IA: bloqueadas por defecto; el admin las desbloquea por alumno
+  interviewUnlocked:    { type: Boolean, default: false },
+  interviewRequestedAt: { type: Date },
+
   // Resultado del test de diagnóstico (informativo; el alumno lo ve en el aula)
   diagnostico: {
     fecha:         { type: Date },

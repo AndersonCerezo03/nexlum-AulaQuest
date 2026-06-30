@@ -1,8 +1,11 @@
 const router = require('express').Router();
 const auth   = require('../middleware/auth');
+const User   = require('../models/User');
+const { enviarCorreo, plantilla } = require('../utils/mailer');
 
-const N8N_URL     = process.env.N8N_INTERVIEW_URL || 'http://localhost:5678/webhook/interview';
-const OPENAI_KEY  = process.env.OPENAI_API_KEY || '';
+const N8N_URL       = process.env.N8N_INTERVIEW_URL || 'http://localhost:5678/webhook/interview';
+const OPENAI_KEY    = process.env.OPENAI_API_KEY || '';
+const SOPORTE_EMAIL = 'andersoncerezo03@gmail.com'; // admin que recibe las solicitudes de desbloqueo
 
 const MAX_MSG_LEN = 2000;
 
@@ -61,6 +64,31 @@ router.post('/message', auth, async function(req, res) {
   } catch(err) {
     console.error('Interview error:', err.message);
     return res.status(500).json({ success: false, error: 'Error interno' });
+  }
+});
+
+// POST /api/interview/request-access — el alumno solicita desbloquear las entrevistas
+router.post('/request-access', auth, async function(req, res) {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ msg: 'Usuario no encontrado' });
+    if (user.interviewUnlocked) return res.json({ ok: true, already: true, msg: 'Ya tienes acceso a las entrevistas.' });
+
+    user.interviewRequestedAt = new Date();
+    await user.save();
+
+    const html = plantilla(
+      'Solicitud de acceso a Entrevistas',
+      'El alumno <b>' + user.name + '</b> (' + user.email + ') solicita desbloquear las Entrevistas con IA.<br><br>' +
+      'Nivel: ' + (user.englishLevel || '-') + '<br>Fecha: ' + new Date().toLocaleString('es-CO'),
+      null, null
+    );
+    // No bloqueamos la respuesta por el correo
+    enviarCorreo(SOPORTE_EMAIL, '🔓 Solicitud de acceso a Entrevistas — ' + user.name, html).catch(()=>{});
+
+    return res.json({ ok: true, msg: 'Solicitud enviada. Soporte te contactará pronto.' });
+  } catch (err) {
+    return res.status(500).json({ msg: err.message });
   }
 });
 
