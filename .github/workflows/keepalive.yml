@@ -1,0 +1,32 @@
+name: keep-alive
+
+# Mantiene despierto el backend de Render (el plan gratis lo duerme tras ~15 min
+# sin trafico, y despertarlo tarda 30-50s). Este ping cada 10 min evita ese retraso
+# para que Mr. Alex y el login respondan rapido siempre.
+# Repo publico => minutos de GitHub Actions gratis e ilimitados.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # cada 10 minutos
+  workflow_dispatch: {}       # permite lanzarlo a mano desde la pestana Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend
+        run: |
+          URL="https://nexlum-aulaquest.onrender.com/"
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$URL" || echo "000")
+            echo "Intento $i -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Backend despierto ✅"
+              exit 0
+            fi
+            sleep 20   # si estaba dormido, dale margen a que arranque y reintenta
+          done
+          # No fallamos el job: el propio intento ya despierta a Render y no queremos
+          # llenar el correo de alertas por un ping perdido.
+          echo "Aviso: no hubo 200, pero el ping igual despierta el servicio."
+          exit 0
