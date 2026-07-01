@@ -4064,56 +4064,59 @@ const handleAuth = async(e) => {
           <div style={{width:pctNivel+'%',background:'linear-gradient(90deg,#6366f1,#06b6d4,#10b981)',height:'100%',borderRadius:8,transition:'width .5s ease',boxShadow:'0 0 12px rgba(99,102,241,.5)'}}/>
         </div>
 
-        {/* ── Aviso: test de diagnóstico pendiente (obligatorio) ───────── */}
-        {user && !user.diagnostico && (
-          <div style={{background:'linear-gradient(135deg,rgba(139,92,246,.16),rgba(99,102,241,.1))',border:'1px solid rgba(139,92,246,.45)',borderRadius:14,padding:'14px 18px',marginBottom:'1rem',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap',boxShadow:'0 0 24px rgba(139,92,246,.12)'}}>
-            <span style={{fontSize:'1.7rem'}}>🎓</span>
-            <div style={{flex:1,minWidth:210}}>
-              <div style={{color:'#c4b5fd',fontWeight:800,fontSize:'.92rem'}}>Aún te falta tu test de diagnóstico</div>
-              <div style={{color:'#94a3b8',fontSize:'.78rem',marginTop:2}}>Es necesario para conocer tu nivel de inglés y saber qué mejorar. Empezarás siempre en el Aula 1.</div>
+        {/* ── Diagnóstico + Trial (lado a lado, mismo tamaño) ──────────── */}
+        <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'stretch',marginBottom:'1rem'}}>
+
+          {/* Diagnóstico: aviso pendiente o botón de resultados */}
+          {user && !user.diagnostico && (
+            <div style={{flex:'1 1 320px',background:'linear-gradient(135deg,rgba(139,92,246,.16),rgba(99,102,241,.1))',border:'1px solid rgba(139,92,246,.45)',borderRadius:14,padding:'14px 18px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap',boxShadow:'0 0 24px rgba(139,92,246,.12)'}}>
+              <span style={{fontSize:'1.7rem'}}>🎓</span>
+              <div style={{flex:1,minWidth:150}}>
+                <div style={{color:'#c4b5fd',fontWeight:800,fontSize:'.92rem'}}>Aún te falta tu test de diagnóstico</div>
+                <div style={{color:'#94a3b8',fontSize:'.78rem',marginTop:2}}>Es necesario para conocer tu nivel de inglés y saber qué mejorar. Empezarás siempre en el Aula 1.</div>
+              </div>
+              <button onClick={()=>setScreen('placement')}
+                style={{background:'linear-gradient(135deg,#8b5cf6,#6366f1)',color:'#fff',border:'none',borderRadius:9,padding:'10px 22px',fontSize:'.84rem',fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',fontFamily:"'Poppins',sans-serif",boxShadow:'0 4px 16px rgba(139,92,246,.35)'}}>
+                Hacer test ahora →
+              </button>
             </div>
-            <button onClick={()=>setScreen('placement')}
-              style={{background:'linear-gradient(135deg,#8b5cf6,#6366f1)',color:'#fff',border:'none',borderRadius:9,padding:'10px 22px',fontSize:'.84rem',fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',fontFamily:"'Poppins',sans-serif",boxShadow:'0 4px 16px rgba(139,92,246,.35)'}}>
-              Hacer test ahora →
+          )}
+          {user?.diagnostico && (
+            <button onClick={()=>setShowDiag(true)}
+              style={{flex:'1 1 320px',display:'flex',alignItems:'center',gap:10,background:'linear-gradient(135deg,rgba(139,92,246,.12),rgba(99,102,241,.08))',border:'1px solid rgba(139,92,246,.28)',borderRadius:14,padding:'14px 18px',cursor:'pointer',color:'#c4b5fd',fontFamily:"'Poppins',sans-serif",fontWeight:600,fontSize:'.82rem',transition:'background .2s'}}
+              onMouseEnter={e=>e.currentTarget.style.background='linear-gradient(135deg,rgba(139,92,246,.2),rgba(99,102,241,.14))'}
+              onMouseLeave={e=>e.currentTarget.style.background='linear-gradient(135deg,rgba(139,92,246,.12),rgba(99,102,241,.08))'}>
+              <span style={{fontSize:'1.1rem'}}>📊</span>
+              <span style={{flex:1,textAlign:'left'}}>Resultados de mi diagnóstico</span>
+              <span style={{color:'#8b5cf6',fontSize:'1rem'}}>→</span>
             </button>
-          </div>
-        )}
+          )}
 
-        {/* ── Botón resultados del diagnóstico ─────────────────────────── */}
-        {user?.diagnostico && (
-          <button onClick={()=>setShowDiag(true)}
-            style={{display:'flex',alignItems:'center',gap:10,width:'100%',background:'linear-gradient(135deg,rgba(139,92,246,.12),rgba(99,102,241,.08))',border:'1px solid rgba(139,92,246,.28)',borderRadius:12,padding:'11px 16px',marginBottom:'1rem',cursor:'pointer',color:'#c4b5fd',fontFamily:"'Poppins',sans-serif",fontWeight:600,fontSize:'.82rem',transition:'background .2s'}}
-            onMouseEnter={e=>e.currentTarget.style.background='linear-gradient(135deg,rgba(139,92,246,.2),rgba(99,102,241,.14))'}
-            onMouseLeave={e=>e.currentTarget.style.background='linear-gradient(135deg,rgba(139,92,246,.12),rgba(99,102,241,.08))'}>
-            <span style={{fontSize:'1.1rem'}}>📊</span>
-            <span style={{flex:1,textAlign:'left'}}>Resultados de mi diagnóstico</span>
-            <span style={{color:'#8b5cf6',fontSize:'1rem'}}>→</span>
-          </button>
-        )}
+          {/* Trial */}
+          {!isPremium && !esAdmin && (trialInfo.expired ? (
+            <div style={{flex:'1 1 320px',background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.3)',borderRadius:14,padding:'14px 18px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+              <span style={{fontSize:'1.5rem'}}>⛔</span>
+              <div style={{flex:1,minWidth:150}}>
+                <div style={{color:'#f87171',fontWeight:700,fontSize:'.9rem'}}>Tu período de prueba gratuita terminó</div>
+                <div style={{color:'#94a3b8',fontSize:'.78rem',marginTop:2}}>Puedes explorar el contenido, pero no avanzar ni ganar XP. Contáctanos para continuar aprendiendo.</div>
+              </div>
+              <a href="mailto:adcerezov@tecmd.edu.co?subject=Quiero continuar en AulaQuest" style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',borderRadius:9,padding:'8px 18px',fontSize:'.8rem',fontWeight:700,cursor:'pointer',textDecoration:'none',whiteSpace:'nowrap'}}>
+                Contactar para continuar
+              </a>
+            </div>
+          ) : trialInfo.daysLeft !== null && (
+            <div style={{flex:'1 1 320px',background:'rgba(245,158,11,.06)',border:'1px solid rgba(245,158,11,.25)',borderRadius:14,padding:'14px 18px',display:'flex',alignItems:'center',gap:12}}>
+              <span style={{fontSize:'1.4rem'}}>⏳</span>
+              <div style={{flex:1}}>
+                <div style={{color:'#fbbf24',fontWeight:700,fontSize:'.85rem'}}>
+                  {trialInfo.daysLeft === 1 ? 'Te queda 1 día de prueba gratuita' : `Te quedan ${trialInfo.daysLeft} días de prueba gratuita`}
+                </div>
+                <div style={{color:'#64748b',fontSize:'.75rem',marginTop:2}}>Contáctanos para continuar</div>
+              </div>
+            </div>
+          ))}
 
-        {/* ── Banner trial ─────────────────────────────────────────────── */}
-        {!isPremium && !esAdmin && (trialInfo.expired ? (
-          <div style={{background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.3)',borderRadius:14,padding:'16px 20px',marginBottom:'1rem',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
-            <span style={{fontSize:'1.5rem'}}>⛔</span>
-            <div style={{flex:1,minWidth:200}}>
-              <div style={{color:'#f87171',fontWeight:700,fontSize:'.9rem'}}>Tu período de prueba gratuita terminó</div>
-              <div style={{color:'#94a3b8',fontSize:'.78rem',marginTop:2}}>Puedes explorar el contenido, pero no avanzar ni ganar XP. Contáctanos para continuar aprendiendo.</div>
-            </div>
-            <a href="mailto:adcerezov@tecmd.edu.co?subject=Quiero continuar en AulaQuest" style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',borderRadius:9,padding:'8px 18px',fontSize:'.8rem',fontWeight:700,cursor:'pointer',textDecoration:'none',whiteSpace:'nowrap'}}>
-              Contactar para continuar
-            </a>
-          </div>
-        ) : trialInfo.daysLeft !== null && (
-          <div style={{background:'rgba(245,158,11,.06)',border:'1px solid rgba(245,158,11,.25)',borderRadius:14,padding:'12px 18px',marginBottom:'1rem',display:'flex',alignItems:'center',gap:12}}>
-            <span style={{fontSize:'1.2rem'}}>⏳</span>
-            <div style={{flex:1}}>
-              <span style={{color:'#fbbf24',fontWeight:700,fontSize:'.82rem'}}>
-                {trialInfo.daysLeft === 1 ? 'Te queda 1 día de prueba gratuita' : `Te quedan ${trialInfo.daysLeft} días de prueba gratuita`}
-              </span>
-              <span style={{color:'#64748b',fontSize:'.75rem',marginLeft:8}}>· Contáctanos para continuar</span>
-            </div>
-          </div>
-        ))}
+        </div>
 
           {(()=>{
             const filas=[]; let _i=0,_w=5;
