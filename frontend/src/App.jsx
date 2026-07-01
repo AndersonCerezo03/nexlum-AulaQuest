@@ -3978,7 +3978,7 @@ const handleAuth = async(e) => {
           </div>
         </div>
       )}
-      <div className="aq-bar" style={{background:'linear-gradient(180deg,rgba(13,17,28,.98),rgba(9,11,21,.92))',backdropFilter:'blur(20px)',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.8rem',borderBottom:'1px solid rgba(99,102,241,0.18)',position:'sticky',top:0,zIndex:100,boxShadow:'0 6px 24px rgba(0,0,0,.4)'}}>
+      <div className="aq-bar" style={{background:'rgba(10,14,26,.45)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.8rem',borderBottom:'1px solid rgba(255,255,255,0.06)',position:'sticky',top:0,zIndex:100}}>
         <div style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}} onClick={()=>setScreen('home')}>
           <div style={{width:34,height:34,background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.95rem',boxShadow:'0 0 16px rgba(99,102,241,.4)'}}>🎓</div>
           <span style={{fontWeight:800,fontSize:'1.05rem',letterSpacing:'.02em',background:'linear-gradient(135deg,#818cf8,#c4b5fd)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>AulaQuest</span>
@@ -4121,7 +4121,7 @@ const handleAuth = async(e) => {
             return (
             <div style={{marginBottom:'1rem'}}>
             {filas.map((fila,_fi)=>(
-              <div key={_fi} style={{display:'flex',justifyContent:'center',flexWrap:'wrap',marginTop:_fi===0?0:-36}}>
+              <div key={_fi} style={{display:'flex',justifyContent:'center',flexWrap:'wrap',marginTop:_fi===0?0:-44}}>
               {fila.map((t)=>{
                 const idx       = TOPICS.indexOf(t);
                 const prog      = progTemas[t.id] || {};
@@ -4142,15 +4142,15 @@ const handleAuth = async(e) => {
                       setTema(activo?null:t); usedWordsRef.current=[]; setWord(null);
                       if (!activo) openCloud(t);
                     }}
-                    style={{width:138,height:152,margin:'0 4px',clipPath:'polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:completo?'rgba(16,185,129,.14)':activo?'rgba(99,102,241,.24)':desbloq?'#182236':'#0f1622',cursor:desbloq?'pointer':'not-allowed',opacity:desbloq?1:0.5,position:'relative',transition:'transform .2s ease',willChange:'transform'}}
-                    onMouseEnter={e=>{ if(desbloq) e.currentTarget.style.transform='scale(1.06)'; }}
-                    onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; }}>
-                    {completo && <span style={{position:'absolute',top:'20%',right:'29%',fontSize:'.7rem',color:'#34d399',fontWeight:700}}>✓</span>}
-                    {!desbloqBase && <span style={{position:'absolute',top:'20%',right:'27%',fontSize:'.72rem'}}>🔒</span>}
-                    {bloqueadoDiario && <span style={{position:'absolute',top:'20%',right:'27%',fontSize:'.72rem'}} title="Límite diario">🌙</span>}
-                    <div style={{fontSize:'1.9rem',lineHeight:1}}>{t.icon}</div>
-                    <div style={{fontSize:'.72rem',color:completo?'#34d399':activo?'#a5b4fc':desbloq?'#dbe4f0':'#475569',fontWeight:activo||completo?600:500,marginTop:7,textAlign:'center',padding:'0 20px',lineHeight:1.2}}>{t.name}</div>
-                    {desbloq && total>0 && <div style={{fontSize:'.6rem',color:'#64748b',marginTop:4}}>{completadas}/{total}</div>}
+                    style={{width:172,height:190,margin:'0 5px',clipPath:'polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:completo?'linear-gradient(160deg,rgba(16,185,129,.2),rgba(16,185,129,.07))':activo?'linear-gradient(160deg,rgba(139,92,246,.32),rgba(99,102,241,.18))':desbloq?'linear-gradient(160deg,#1e2a44,#141c2e)':'#0e1420',cursor:desbloq?'pointer':'not-allowed',opacity:desbloq?1:0.5,position:'relative',transition:'transform .22s ease,filter .22s ease',willChange:'transform'}}
+                    onMouseEnter={e=>{ if(desbloq){ e.currentTarget.style.transform='scale(1.07)'; e.currentTarget.style.filter='brightness(1.18)'; } }}
+                    onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.filter='none'; }}>
+                    {completo && <span style={{position:'absolute',top:'19%',right:'30%',fontSize:'.75rem',color:'#34d399',fontWeight:700}}>✓</span>}
+                    {!desbloqBase && <span style={{position:'absolute',top:'19%',right:'28%',fontSize:'.78rem'}}>🔒</span>}
+                    {bloqueadoDiario && <span style={{position:'absolute',top:'19%',right:'28%',fontSize:'.78rem'}} title="Límite diario">🌙</span>}
+                    <div style={{fontSize:'2.2rem',lineHeight:1}}>{t.icon}</div>
+                    <div style={{fontSize:'.78rem',color:completo?'#6ee7b7':activo?'#c4b5fd':desbloq?'#e8eef7':'#475569',fontWeight:activo||completo?600:500,marginTop:9,textAlign:'center',padding:'0 26px',lineHeight:1.25,letterSpacing:'.01em'}}>{t.name}</div>
+                    {desbloq && total>0 && <div style={{fontSize:'.62rem',color:'#7c8aa3',marginTop:5,fontWeight:500}}>{completadas}/{total}</div>}
                   </div>
                 );
               })}
@@ -4441,8 +4441,15 @@ const handleAuth = async(e) => {
         {nivel === 'A1' && (
         <div style={{marginTop:'1rem'}}>
           <button onClick={()=>setShowMaterial(!showMaterial)}
-            style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',borderRadius:12,padding:'13px 0',fontSize:'.9rem',fontWeight:700,cursor:'pointer',fontFamily:"'Poppins',sans-serif",boxShadow:'0 4px 18px rgba(99,102,241,.25)'}}>
-            <span style={{fontSize:'1.1rem'}}>📚</span> Material de apoyo <span style={{fontSize:'.7rem'}}>{showMaterial?'▴':'▾'}</span>
+            style={{width:'100%',display:'flex',alignItems:'center',gap:14,background:'linear-gradient(135deg,rgba(99,102,241,.16),rgba(139,92,246,.1))',border:'1px solid rgba(139,92,246,.4)',borderRadius:16,padding:'14px 18px',cursor:'pointer',fontFamily:"'Poppins',sans-serif",textAlign:'left',transition:'background .2s,border-color .2s'}}
+            onMouseEnter={e=>{e.currentTarget.style.background='linear-gradient(135deg,rgba(99,102,241,.26),rgba(139,92,246,.18))';e.currentTarget.style.borderColor='rgba(139,92,246,.6)';}}
+            onMouseLeave={e=>{e.currentTarget.style.background='linear-gradient(135deg,rgba(99,102,241,.16),rgba(139,92,246,.1))';e.currentTarget.style.borderColor='rgba(139,92,246,.4)';}}>
+            <div style={{width:46,height:46,borderRadius:13,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.4rem',flexShrink:0,boxShadow:'0 4px 16px rgba(99,102,241,.4)'}}>📚</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:'.95rem',fontWeight:700,color:'#e2e8f0'}}>Material de apoyo</div>
+              <div style={{fontSize:'.72rem',color:'#94a3b8',marginTop:2}}>4 recursos descargables · guías y ejercicios en PDF</div>
+            </div>
+            <span style={{fontSize:'1.1rem',color:'#a5b4fc',flexShrink:0}}>{showMaterial?'▴':'▾'}</span>
           </button>
           {showMaterial && (
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:12}}>
