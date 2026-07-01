@@ -148,13 +148,16 @@ function playAudio(url, rate, onEnd) {
 }
 
 // Alex habla en inglés y luego en español
-async function alexSpeakBilingual(enText, esText, token, onEnd) {
+async function alexSpeakBilingual(enText, esText, token, onEnd, onStart) {
   const mySeq = ++_alexCallSeq; // si se llama stopAlex (cierre del panel), esta reproducción se corta
   // onEnd se llama UNA sola vez. Watchdog: libera el flujo aunque un audio de la
   // secuencia se cuelgue, para que la práctica no quede trabada en "speaking".
   let done = false, guard = null;
   const finish = () => { if (done) return; done = true; if (guard) clearTimeout(guard); if (onEnd) onEnd(); };
   guard = setTimeout(finish, 14000);
+  // onStart avisa cuando el primer audio EMPIEZA a sonar (no cuando se pide)
+  let started = false;
+  const fireStart = () => { if (started) return; started = true; if (onStart && mySeq === _alexCallSeq) onStart(); };
 
   if (window._alexListening) { finish(); return; }
   if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
@@ -164,6 +167,7 @@ async function alexSpeakBilingual(enText, esText, token, onEnd) {
     if (!window.speechSynthesis) { finish(); return; }
     const u = new SpeechSynthesisUtterance(enText);
     u.lang='en-US'; u.rate=0.72; u.pitch=1.0; u.volume=1;
+    u.onstart = fireStart;
     u.onend = finish; u.onerror = finish;
     window.speechSynthesis.speak(u);
   };
@@ -189,6 +193,7 @@ async function alexSpeakBilingual(enText, esText, token, onEnd) {
       if (mySeq !== _alexCallSeq || window._alexListening) { finish(); return; }
       const audio = new Audio(url);
       _currentAudio = audio;
+      audio.onplay = fireStart;
       audio.onended = next;
       audio.onerror = next;
       audio.play().catch(next); // si un audio falla, sigue con el resto
@@ -221,7 +226,7 @@ function stopAlex() {
   window.responsiveVoice && window.responsiveVoice.cancel();
 }
 
-function alexSpeak(text, rate, onEnd, lang) {
+function alexSpeak(text, rate, onEnd, lang, onStart) {
   const mySeq = ++_alexCallSeq; // si se llama stopAlex (cierre del panel), esta reproducción se corta
   // onEnd se llama UNA sola vez. Watchdog: si el audio nunca dispara su evento
   // de fin (bug de Web Speech, blob inválido o red lenta), el flujo se libera igual
@@ -229,6 +234,10 @@ function alexSpeak(text, rate, onEnd, lang) {
   let done = false, guard = null;
   const finish = () => { if (done) return; done = true; if (guard) clearTimeout(guard); if (onEnd) onEnd(); };
   guard = setTimeout(finish, 9000);
+  // onStart avisa cuando el audio EMPIEZA a sonar de verdad (no cuando se pide),
+  // para que el orbe muestre "hablando" solo al oírse, no antes.
+  let started = false;
+  const fireStart = () => { if (started) return; started = true; if (onStart && mySeq === _alexCallSeq) onStart(); };
 
   if (window._alexListening) { finish(); return; }
 
@@ -242,6 +251,7 @@ function alexSpeak(text, rate, onEnd, lang) {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang === 'es' ? 'es-ES' : 'en-US'; u.rate=rate || 0.80; u.pitch=1.0; u.volume=1;
+    u.onstart = fireStart;
     u.onend = finish; u.onerror = finish;
     window.speechSynthesis.speak(u);
   };
@@ -251,6 +261,7 @@ function alexSpeak(text, rate, onEnd, lang) {
     const audio = new Audio(url);
     audio.playbackRate = rate || 0.95;
     _currentAudio = audio;
+    audio.onplay = fireStart;
     audio.onended = finish;
     audio.onerror = finish;
     audio.play().catch(finish);
@@ -3567,17 +3578,14 @@ const handleAuth = async(e) => {
   const openCloud = (temaObj) => {
     if (temaObj) setTema(temaObj);
     setCloudOpen(true);
-    setTimeout(()=>{
-      if (temaObj) {
-        const msg = randFn(ALEX_TEMA, temaObj.name);
-        setOrbState('speaking'); setBubble('🎯 Tema: ' + temaObj.name + ' — ' + msg); setBubbleType('');
-        alexSpeak(temaObj ? temaObj.name : 'Let us begin', 0.85, ()=>setOrbState('idle'));
-      } else {
-        const msg = rand(ALEX_BIENVENIDA);
-        setOrbState('speaking'); setBubble('👋 ' + msg); setBubbleType('');
-        alexSpeak(temaObj ? temaObj.name : 'Let us begin', 0.85, ()=>setOrbState('idle'));
-      }
-    },400);
+    // Pedir el audio YA (sin esperar 400ms). El orbe muestra "procesando…"
+    // mientras carga y pasa a "hablando…" solo cuando el sonido arranca de verdad.
+    const msg = temaObj ? randFn(ALEX_TEMA, temaObj.name) : rand(ALEX_BIENVENIDA);
+    setOrbState('thinking');
+    setBubble(temaObj ? ('🎯 Tema: ' + temaObj.name + ' — ' + msg) : ('👋 ' + msg));
+    setBubbleType('');
+    alexSpeak(temaObj ? temaObj.name : 'Let us begin', 0.85,
+      ()=>setOrbState('idle'), null, ()=>setOrbState('speaking'));
   };
 
   const closeCloud = () => {
@@ -3613,8 +3621,8 @@ const handleAuth = async(e) => {
     if (pendientes.length === 0) {
       setBubble('🏆 Ya completaste todas las palabras de este tema! Selecciona el siguiente tema desbloqueado.');
       setBubbleType('ok');
-      setOrbState('speaking');
-      alexSpeak('Felicitaciones! Completaste todas las palabras de este tema. Selecciona el siguiente tema para continuar.', 0.85, ()=>setOrbState('idle'), 'es');
+      setOrbState('thinking');
+      alexSpeak('Felicitaciones! Completaste todas las palabras de este tema. Selecciona el siguiente tema para continuar.', 0.85, ()=>setOrbState('idle'), 'es', ()=>setOrbState('speaking'));
       return;
     }
     // Evitar repetir en sesión usando ref (siempre actualizado)
@@ -3626,12 +3634,12 @@ const handleAuth = async(e) => {
     usedWordsRef.current = [...usedWordsRef.current, w.en];
     setWord(w);
     setBubble('📖 ' + w.en + ' = ' + w.es + ' — Escucha y repite!'); setBubbleType('');
-    setOrbState('speaking');
+    setOrbState('thinking');
     // Solo decir la palabra 2 veces, rapido y claro
     alexSpeakBilingual(w.en, w.es, window._alexToken || token, ()=>{
       setOrbState('listening');
       setBubble('🎤 Di: ' + w.en + ' (' + w.es + ')');
-    });
+    }, ()=>setOrbState('speaking'));
   };
 
   const startListen = () => {
@@ -3723,9 +3731,10 @@ const handleAuth = async(e) => {
         }
       } else {
                 const msgErr = randFn(ALEX_ERROR, word.en, word.es);
-        setBubble('❌ ' + msgErr); setBubbleType('err'); setOrbState('speaking');
+        setBubble('❌ ' + msgErr); setBubbleType('err'); setOrbState('thinking');
         alexSpeakBilingual(word.en, word.es, window._alexToken || '',
-          ()=>{ setOrbState('listening'); setBubble('🎤 Otra vez: ' + word.en + ' (' + word.es + ')'); setBubbleType(''); });
+          ()=>{ setOrbState('listening'); setBubble('🎤 Otra vez: ' + word.en + ' (' + word.es + ')'); setBubbleType(''); },
+          ()=>setOrbState('speaking'));
       }
     };
     // Si start() falla (mic ocupado o reconocimiento ya activo), liberar todo para poder reintentar
