@@ -4146,8 +4146,8 @@ const handleAuth = async(e) => {
                       if (!activo) openCloud(t);
                     }}
                     style={{width:172,height:190,margin:'0 5px',clipPath:'polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:completo?'linear-gradient(160deg,rgba(16,185,129,.2),rgba(16,185,129,.07))':activo?'linear-gradient(160deg,rgba(139,92,246,.32),rgba(99,102,241,.18))':desbloq?'linear-gradient(160deg,#1e2a44,#141c2e)':'#0e1420',cursor:desbloq?'pointer':'not-allowed',opacity:desbloq?1:0.5,position:'relative',transition:'transform .22s ease,filter .22s ease',willChange:'transform'}}
-                    onMouseEnter={e=>{ if(desbloq){ e.currentTarget.style.transform='scale(1.07)'; e.currentTarget.style.filter='brightness(1.18)'; } }}
-                    onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.filter='none'; }}>
+                    onMouseEnter={e=>{ if(desbloq){ const g=completo?'16,185,129':activo?'139,92,246':'99,102,241'; e.currentTarget.style.zIndex='9'; e.currentTarget.style.transform='scale(1.09) translateY(-3px)'; e.currentTarget.style.filter=`brightness(1.16) drop-shadow(0 10px 22px rgba(${g},.6))`; } }}
+                    onMouseLeave={e=>{ e.currentTarget.style.zIndex=''; e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.filter='none'; }}>
                     {completo && <span style={{position:'absolute',top:'19%',right:'30%',fontSize:'.75rem',color:'#34d399',fontWeight:700}}>✓</span>}
                     {!desbloqBase && <span style={{position:'absolute',top:'19%',right:'28%',fontSize:'.78rem'}}>🔒</span>}
                     {bloqueadoDiario && <span style={{position:'absolute',top:'19%',right:'28%',fontSize:'.78rem'}} title="Límite diario">🌙</span>}
