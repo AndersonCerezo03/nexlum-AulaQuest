@@ -173,37 +173,37 @@ async function alexSpeakBilingual(enText, esText, token, onEnd) {
   try {
     const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
 
-    const [rEn, rEs] = await Promise.all([
-      fetch(API+'/api/tts/speak',    { method:'POST', headers, body: JSON.stringify({ text: enText }) }),
-      fetch(API+'/api/tts/speak-es', { method:'POST', headers, body: JSON.stringify({ text: esText }) }),
-    ]);
+    // Ambas peticiones arrancan en paralelo, pero NO esperamos a las dos:
+    // en cuanto el inglés está listo, Mr. Alex empieza a hablar. El español se
+    // resuelve mientras tanto y se reproduce cuando llega su turno.
+    const pEn = fetch(API+'/api/tts/speak',    { method:'POST', headers, body: JSON.stringify({ text: enText }) }).then(r => r.ok ? r.blob() : null);
+    const pEs = fetch(API+'/api/tts/speak-es', { method:'POST', headers, body: JSON.stringify({ text: esText }) }).then(r => r.ok ? r.blob() : null).catch(() => null);
 
-    if (!rEn.ok || !rEs.ok) { fallback(); return; }
-
-    const [blobEn, blobEs] = await Promise.all([rEn.blob(), rEs.blob()]);
+    const blobEn = await pEn;
+    if (mySeq !== _alexCallSeq) { finish(); return; }   // se cerró el panel mientras cargaba
+    if (!blobEn) { fallback(); return; }
     const urlEn = URL.createObjectURL(blobEn);
-    const urlEs = URL.createObjectURL(blobEs);
 
-    const playSeq = (steps, idx) => {
-      if (mySeq !== _alexCallSeq) { finish(); return; } // se cerró el panel / se pidió detener
-      if (idx >= steps.length) { finish(); return; }
-      const step = steps[idx];
-      if (step.pause) { setTimeout(() => playSeq(steps, idx+1), step.pause); return; }
-      if (window._alexListening) { finish(); return; }
-      const audio = new Audio(step.url);
+    // Reproduce una URL y llama a next() al terminar (respetando stop / que el usuario hable)
+    const playOne = (url, next) => {
+      if (mySeq !== _alexCallSeq || window._alexListening) { finish(); return; }
+      const audio = new Audio(url);
       _currentAudio = audio;
-      audio.onended = () => playSeq(steps, idx+1);
-      audio.onerror = () => playSeq(steps, idx+1);
-      audio.play().catch(() => playSeq(steps, idx+1)); // si un audio falla, sigue con el resto
+      audio.onended = next;
+      audio.onerror = next;
+      audio.play().catch(next); // si un audio falla, sigue con el resto
     };
 
-    playSeq([
-      { url: urlEn },
-      { pause: 600 },
-      { url: urlEs },
-      { pause: 700 },
-      { url: urlEn },
-    ], 0);
+    // EN (apenas listo) → pausa → ES → pausa → EN otra vez
+    playOne(urlEn, async () => {
+      if (mySeq !== _alexCallSeq) { finish(); return; }
+      const blobEs = await pEs;                          // normalmente ya está listo
+      if (mySeq !== _alexCallSeq) { finish(); return; }
+      const urlEs = blobEs ? URL.createObjectURL(blobEs) : null;
+      const replayEn = () => setTimeout(() => playOne(urlEn, finish), 700);
+      if (urlEs) setTimeout(() => playOne(urlEs, replayEn), 600);
+      else replayEn();                                   // si el español falló, solo repite el inglés
+    });
 
   } catch { fallback(); }
 }
