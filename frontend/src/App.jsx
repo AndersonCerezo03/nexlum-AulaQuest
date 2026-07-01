@@ -4124,7 +4124,7 @@ const handleAuth = async(e) => {
             return (
             <div style={{marginBottom:'1rem'}}>
             {filas.map((fila,_fi)=>(
-              <div key={_fi} style={{display:'flex',justifyContent:'center',flexWrap:'wrap',marginTop:_fi===0?0:-44}}>
+              <div key={_fi} style={{display:'flex',justifyContent:'center',flexWrap:'wrap',marginTop:_fi===0?0:-48}}>
               {fila.map((t)=>{
                 const idx       = TOPICS.indexOf(t);
                 const prog      = progTemas[t.id] || {};
@@ -4145,7 +4145,7 @@ const handleAuth = async(e) => {
                       setTema(activo?null:t); usedWordsRef.current=[]; setWord(null);
                       if (!activo) openCloud(t);
                     }}
-                    style={{width:172,height:190,margin:'0 5px',position:'relative',cursor:desbloq?'pointer':'not-allowed',transition:'transform .22s ease,filter .22s ease',willChange:'transform,filter'}}
+                    style={{width:172,height:190,margin:'0 -1px',position:'relative',cursor:desbloq?'pointer':'not-allowed',transition:'transform .22s ease,filter .22s ease',willChange:'transform,filter'}}
                     onMouseEnter={e=>{ if(desbloq){ const g=completo?'16,185,129':activo?'139,92,246':'99,102,241'; e.currentTarget.style.zIndex='9'; e.currentTarget.style.transform='scale(1.09) translateY(-3px)'; e.currentTarget.style.filter=`brightness(1.12) drop-shadow(0 12px 24px rgba(${g},.65))`; } }}
                     onMouseLeave={e=>{ e.currentTarget.style.zIndex=''; e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.filter='none'; }}>
                     <div style={{width:'100%',height:'100%',clipPath:'polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:completo?'linear-gradient(160deg,rgba(16,185,129,.2),rgba(16,185,129,.07))':activo?'linear-gradient(160deg,rgba(139,92,246,.32),rgba(99,102,241,.18))':desbloq?'linear-gradient(160deg,#1e2a44,#141c2e)':'#0e1420',opacity:desbloq?1:0.5,position:'relative'}}>
