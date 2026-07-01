@@ -3334,6 +3334,7 @@ export default function App() {
   const interviewLocked = !esAdmin && !(user?.interviewUnlocked); // entrevistas bloqueadas hasta que el admin las habilite
   const [showInterviewModal, setShowInterviewModal] = useState(false);
   const [interviewReqState,  setInterviewReqState]  = useState(''); // ''|'sending'|'sent'|'error'
+  const [showMaterial,       setShowMaterial]       = useState(false); // panel de material de apoyo (PDFs)
   const nivel = (esAdmin && adminVistaNivel) ? adminVistaNivel : (user?.englishLevel || 'A1');
   const [TOPICS,      setTOPICS]      = useState([]);
   const [vocabData,   setVocabData]   = useState({});
@@ -4114,72 +4115,50 @@ const handleAuth = async(e) => {
           </div>
         ))}
 
-          <div className="aq-topics" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:'1rem'}}>          {TOPICS.map((t,idx)=>{
-            const prog    = progTemas[t.id] || {};
-            const completo= prog.completo || false;
-            const completadas = prog.completadas || 0;
-            const total   = prog.total || (vocabData[t.id]||[]).length || 0;
-            // Solo primer tema desbloqueado; los demás requieren que el anterior esté completo
-            const desbloqBase = esAdmin ? true : (idx === 0
-              ? true
-              : (progTemas[TOPICS[idx-1]?.id]?.completo || false));
-            // Bloqueo diario: solo un tema por día para usuarios no premium
-            const esTemaDelDia = dailyTopicId === t.id;
-            const hayTemaDelDia = dailyTopicId !== '';
-            const bloqueadoDiario = !isPremium && !esAdmin && desbloqBase && !completo && hayTemaDelDia && !esTemaDelDia;
-            const desbloq = desbloqBase && !bloqueadoDiario;
-            const pct     = total > 0 ? Math.round((completadas/total)*100) : 0;
-            const activo  = tema?.id===t.id;
+          {(()=>{
+            const filas=[]; let _i=0,_w=5;
+            while(_i<TOPICS.length){ filas.push(TOPICS.slice(_i,_i+_w)); _i+=_w; _w=_w===5?4:5; }
             return (
-              <div key={t.id}
-                onClick={()=>{
-                  if (!desbloqBase) {
-                    setBubble('🔒 Completa el tema anterior primero para desbloquear este.');
-                    setBubbleType('err'); return;
-                  }
-                  if (bloqueadoDiario) {
-                    setBubble('🌙 Solo puedes avanzar en un tema por día. ¡Vuelve mañana para continuar!');
-                    setBubbleType('err'); return;
-                  }
-                  setTema(activo?null:t); usedWordsRef.current=[]; setWord(null);
-                  if (!activo) openCloud(t);
-                }}
-                style={{background: completo?'rgba(16,185,129,.08)':activo?'rgba(99,102,241,.15)':'#0f172a',border:'1px solid '+(completo?'rgba(16,185,129,.3)':activo?'rgba(99,102,241,.5)':desbloq?'rgba(99,102,241,.12)':'rgba(99,102,241,.06)'),borderRadius:11,padding:'14px 8px',textAlign:'center',cursor:desbloq?'pointer':'not-allowed',transition:'transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease, border-color .25s ease',opacity:desbloq?1:0.45,position:'relative',willChange:'transform',overflow:'hidden'}}
-                onMouseEnter={e=>{
-                  if(!desbloq) return;
-                  e.currentTarget.style.transform='translateY(-8px) scale(1.04)';
-                  e.currentTarget.style.boxShadow='0 14px 30px rgba(99,102,241,.35), 0 0 0 1px rgba(99,102,241,.4) inset';
-                  e.currentTarget.style.borderColor= completo?'rgba(16,185,129,.6)':'rgba(99,102,241,.6)';
-                }}
-                onMouseLeave={e=>{
-                  e.currentTarget.style.transform='translateY(0) scale(1)';
-                  e.currentTarget.style.boxShadow='none';
-                  e.currentTarget.style.background= completo?'rgba(16,185,129,.08)':activo?'rgba(99,102,241,.15)':'#0f172a';
-                  e.currentTarget.style.borderColor= completo?'rgba(16,185,129,.3)':activo?'rgba(99,102,241,.5)':desbloq?'rgba(99,102,241,.12)':'rgba(99,102,241,.06)';
-                }}
-                onMouseMove={e=>{
-                  if(!desbloq) return;
-                  const r=e.currentTarget.getBoundingClientRect();
-                  const px=((e.clientX-r.left)/r.width)*100;
-                  const py=((e.clientY-r.top)/r.height)*100;
-                  e.currentTarget.style.background=`radial-gradient(circle at ${px}% ${py}%, rgba(99,102,241,.25), ${completo?'rgba(16,185,129,.08)':activo?'rgba(99,102,241,.15)':'#0f172a'} 60%)`;
-                }}>
-                <div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,rgba(255,255,255,.06),transparent 45%)',pointerEvents:'none'}}/>
-                {completo && <div style={{position:'absolute',top:4,right:4,fontSize:'.6rem',background:'rgba(16,185,129,.2)',color:'#10b981',borderRadius:50,padding:'1px 5px',fontWeight:700}}>✓</div>}
-                {!desbloqBase && <div style={{position:'absolute',top:4,right:4,fontSize:'.65rem'}}>🔒</div>}
-                {bloqueadoDiario && <div style={{position:'absolute',top:4,right:4,fontSize:'.65rem'}} title="Límite diario">🌙</div>}
-                <div style={{fontSize:'1.4rem',marginBottom:4}}>{t.icon}</div>
-                <div style={{fontSize:'.65rem',color:completo?'#10b981':activo?'#a5b4fc':desbloq?'#64748b':'#334155',fontWeight:activo||completo?600:400,marginBottom:3}}>{t.name}</div>
-                {desbloq && total>0 && (
-                  <div style={{height:2,background:'rgba(99,102,241,.1)',borderRadius:2,overflow:'hidden',margin:'0 4px'}}>
-                    <div style={{height:'100%',width:pct+'%',background:completo?'#10b981':'linear-gradient(90deg,#6366f1,#8b5cf6)',borderRadius:2,transition:'width .4s'}}/>
+            <div style={{marginBottom:'1rem'}}>
+            {filas.map((fila,_fi)=>(
+              <div key={_fi} style={{display:'flex',justifyContent:'center',flexWrap:'wrap',marginTop:_fi===0?0:-36}}>
+              {fila.map((t)=>{
+                const idx       = TOPICS.indexOf(t);
+                const prog      = progTemas[t.id] || {};
+                const completo  = prog.completo || false;
+                const completadas = prog.completadas || 0;
+                const total     = prog.total || (vocabData[t.id]||[]).length || 0;
+                const desbloqBase = esAdmin ? true : (idx === 0 ? true : (progTemas[TOPICS[idx-1]?.id]?.completo || false));
+                const esTemaDelDia = dailyTopicId === t.id;
+                const hayTemaDelDia = dailyTopicId !== '';
+                const bloqueadoDiario = !isPremium && !esAdmin && desbloqBase && !completo && hayTemaDelDia && !esTemaDelDia;
+                const desbloq   = desbloqBase && !bloqueadoDiario;
+                const activo    = tema?.id===t.id;
+                return (
+                  <div key={t.id}
+                    onClick={()=>{
+                      if (!desbloqBase) { setBubble('🔒 Completa el tema anterior primero para desbloquear este.'); setBubbleType('err'); return; }
+                      if (bloqueadoDiario) { setBubble('🌙 Solo puedes avanzar en un tema por día. ¡Vuelve mañana para continuar!'); setBubbleType('err'); return; }
+                      setTema(activo?null:t); usedWordsRef.current=[]; setWord(null);
+                      if (!activo) openCloud(t);
+                    }}
+                    style={{width:138,height:152,margin:'0 4px',clipPath:'polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:completo?'rgba(16,185,129,.14)':activo?'rgba(99,102,241,.24)':desbloq?'#182236':'#0f1622',cursor:desbloq?'pointer':'not-allowed',opacity:desbloq?1:0.5,position:'relative',transition:'transform .2s ease',willChange:'transform'}}
+                    onMouseEnter={e=>{ if(desbloq) e.currentTarget.style.transform='scale(1.06)'; }}
+                    onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; }}>
+                    {completo && <span style={{position:'absolute',top:'20%',right:'29%',fontSize:'.7rem',color:'#34d399',fontWeight:700}}>✓</span>}
+                    {!desbloqBase && <span style={{position:'absolute',top:'20%',right:'27%',fontSize:'.72rem'}}>🔒</span>}
+                    {bloqueadoDiario && <span style={{position:'absolute',top:'20%',right:'27%',fontSize:'.72rem'}} title="Límite diario">🌙</span>}
+                    <div style={{fontSize:'1.9rem',lineHeight:1}}>{t.icon}</div>
+                    <div style={{fontSize:'.72rem',color:completo?'#34d399':activo?'#a5b4fc':desbloq?'#dbe4f0':'#475569',fontWeight:activo||completo?600:500,marginTop:7,textAlign:'center',padding:'0 20px',lineHeight:1.2}}>{t.name}</div>
+                    {desbloq && total>0 && <div style={{fontSize:'.6rem',color:'#64748b',marginTop:4}}>{completadas}/{total}</div>}
                   </div>
-                )}
-                {desbloq && <div style={{fontSize:'.55rem',color:'#475569',marginTop:2}}>{completadas}/{total}</div>}
+                );
+              })}
               </div>
+            ))}
+            </div>
             );
-          })}
-        </div>
+          })()}
         {tema&&(
           <div style={{background:'#0f172a',border:'1px solid rgba(99,102,241,.2)',borderRadius:14,padding:'1.2rem',marginBottom:'1rem'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'.8rem'}}>
@@ -4457,6 +4436,34 @@ const handleAuth = async(e) => {
         })()}
         </div>
         </div>
+
+        {/* ── Material de apoyo (PDFs) ─────────────────────────────────── */}
+        {nivel === 'A1' && (
+        <div style={{marginTop:'1rem'}}>
+          <button onClick={()=>setShowMaterial(!showMaterial)}
+            style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',borderRadius:12,padding:'13px 0',fontSize:'.9rem',fontWeight:700,cursor:'pointer',fontFamily:"'Poppins',sans-serif",boxShadow:'0 4px 18px rgba(99,102,241,.25)'}}>
+            <span style={{fontSize:'1.1rem'}}>📚</span> Material de apoyo <span style={{fontSize:'.7rem'}}>{showMaterial?'▴':'▾'}</span>
+          </button>
+          {showMaterial && (
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:12}}>
+              {[
+                { ic:'📘', t:'Guía de gramática A1',   d:'Verb to be, presente, artículos', url:'' },
+                { ic:'📋', t:'Vocabulario A1 completo', d:'Todas las palabras con traducción', url:'' },
+                { ic:'✏️', t:'Hojas de ejercicios',     d:'Práctica imprimible por tema', url:'' },
+                { ic:'🔊', t:'Guía de pronunciación',   d:'Sonidos del inglés con audio', url:'' },
+              ].map((m,i)=>(
+                <a key={i} href={m.url||undefined} target="_blank" rel="noopener noreferrer"
+                  style={{display:'block',textDecoration:'none',background:'#172033',border:'1px solid rgba(99,102,241,.18)',borderRadius:12,padding:14,cursor:m.url?'pointer':'default',opacity:m.url?1:0.85}}>
+                  <div style={{fontSize:'1.6rem',lineHeight:1}}>{m.ic}</div>
+                  <div style={{color:'#e2e8f0',fontSize:'.78rem',fontWeight:600,marginTop:8}}>{m.t}</div>
+                  <div style={{color:'#64748b',fontSize:'.7rem',marginTop:3,lineHeight:1.5}}>{m.d}</div>
+                  <div style={{color:m.url?'#a5b4fc':'#475569',fontSize:'.7rem',marginTop:10}}>{m.url?'⬇ Descargar PDF':'Próximamente'}</div>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+        )}
 
       </div>
 

@@ -267,10 +267,181 @@ async function seed() {
           { en: 'How much',      es: '¿Cuánto? (incontable)' },
           { en: 'How many',      es: '¿Cuántos? (contable)' },
         ]
+      },
+      {
+        id: 'days_months',
+        titulo: 'Días y meses',
+        icono: '📅',
+        vocabulario: [
+          { en: 'Monday',    es: 'Lunes' },
+          { en: 'Tuesday',   es: 'Martes' },
+          { en: 'Wednesday', es: 'Miércoles' },
+          { en: 'Thursday',  es: 'Jueves' },
+          { en: 'Friday',    es: 'Viernes' },
+          { en: 'Saturday',  es: 'Sábado' },
+          { en: 'Sunday',    es: 'Domingo' },
+          { en: 'January',   es: 'Enero' },
+          { en: 'February',  es: 'Febrero' },
+          { en: 'Today',     es: 'Hoy' },
+          { en: 'Tomorrow',  es: 'Mañana' },
+          { en: 'Yesterday', es: 'Ayer' },
+        ]
+      },
+      {
+        id: 'time',
+        titulo: 'La hora',
+        icono: '🕐',
+        vocabulario: [
+          { en: 'What time is it?', es: '¿Qué hora es?' },
+          { en: "O'clock",   es: 'En punto' },
+          { en: 'Half past',  es: 'Y media' },
+          { en: 'Quarter past',es: 'Y cuarto' },
+          { en: 'Quarter to', es: 'Menos cuarto' },
+          { en: 'Hour',       es: 'Hora' },
+          { en: 'Minute',     es: 'Minuto' },
+          { en: 'Morning',    es: 'Mañana' },
+          { en: 'Afternoon',  es: 'Tarde' },
+          { en: 'Evening',    es: 'Noche' },
+          { en: 'Noon',       es: 'Mediodía' },
+          { en: 'Midnight',   es: 'Medianoche' },
+        ]
+      },
+      {
+        id: 'weather',
+        titulo: 'El clima',
+        icono: '☁️',
+        vocabulario: [
+          { en: 'Sunny',  es: 'Soleado' },
+          { en: 'Rainy',  es: 'Lluvioso' },
+          { en: 'Cloudy', es: 'Nublado' },
+          { en: 'Windy',  es: 'Ventoso' },
+          { en: 'Snowy',  es: 'Nevado' },
+          { en: 'Hot',    es: 'Caluroso' },
+          { en: 'Cold',   es: 'Frío' },
+          { en: 'Warm',   es: 'Templado' },
+          { en: 'Rain',   es: 'Lluvia' },
+          { en: 'Snow',   es: 'Nieve' },
+          { en: 'Storm',  es: 'Tormenta' },
+          { en: 'Wind',   es: 'Viento' },
+        ]
+      },
+      {
+        id: 'clothes',
+        titulo: 'La ropa',
+        icono: '👕',
+        vocabulario: [
+          { en: 'Shirt',   es: 'Camisa' },
+          { en: 'T-shirt', es: 'Camiseta' },
+          { en: 'Pants',   es: 'Pantalones' },
+          { en: 'Dress',   es: 'Vestido' },
+          { en: 'Skirt',   es: 'Falda' },
+          { en: 'Shoes',   es: 'Zapatos' },
+          { en: 'Socks',   es: 'Calcetines' },
+          { en: 'Jacket',  es: 'Chaqueta' },
+          { en: 'Hat',     es: 'Sombrero' },
+          { en: 'Coat',    es: 'Abrigo' },
+          { en: 'Sweater', es: 'Suéter' },
+          { en: 'Gloves',  es: 'Guantes' },
+        ]
+      },
+      {
+        id: 'jobs',
+        titulo: 'Profesiones',
+        icono: '💼',
+        vocabulario: [
+          { en: 'Teacher',  es: 'Profesor' },
+          { en: 'Doctor',   es: 'Doctor' },
+          { en: 'Nurse',    es: 'Enfermero' },
+          { en: 'Engineer', es: 'Ingeniero' },
+          { en: 'Police officer', es: 'Policía' },
+          { en: 'Firefighter',    es: 'Bombero' },
+          { en: 'Cook',     es: 'Cocinero' },
+          { en: 'Driver',   es: 'Conductor' },
+          { en: 'Farmer',   es: 'Granjero' },
+          { en: 'Waiter',   es: 'Mesero' },
+          { en: 'Student',  es: 'Estudiante' },
+          { en: 'Lawyer',   es: 'Abogado' },
+        ]
+      },
+      {
+        id: 'places',
+        titulo: 'Lugares de la ciudad',
+        icono: '🏪',
+        vocabulario: [
+          { en: 'Hospital',   es: 'Hospital' },
+          { en: 'School',     es: 'Escuela' },
+          { en: 'Park',       es: 'Parque' },
+          { en: 'Bank',       es: 'Banco' },
+          { en: 'Store',      es: 'Tienda' },
+          { en: 'Restaurant', es: 'Restaurante' },
+          { en: 'Library',    es: 'Biblioteca' },
+          { en: 'Airport',    es: 'Aeropuerto' },
+          { en: 'Station',    es: 'Estación' },
+          { en: 'Market',     es: 'Mercado' },
+          { en: 'Church',     es: 'Iglesia' },
+          { en: 'Hotel',      es: 'Hotel' },
+        ]
+      },
+      {
+        id: 'transport',
+        titulo: 'Transporte',
+        icono: '🚌',
+        vocabulario: [
+          { en: 'Car',        es: 'Carro' },
+          { en: 'Bus',        es: 'Autobús' },
+          { en: 'Train',      es: 'Tren' },
+          { en: 'Plane',      es: 'Avión' },
+          { en: 'Bike',       es: 'Bicicleta' },
+          { en: 'Taxi',       es: 'Taxi' },
+          { en: 'Boat',       es: 'Barco' },
+          { en: 'Truck',      es: 'Camión' },
+          { en: 'Motorcycle', es: 'Motocicleta' },
+          { en: 'Subway',     es: 'Metro' },
+          { en: 'Ship',       es: 'Barco grande' },
+          { en: 'Helicopter', es: 'Helicóptero' },
+        ]
+      },
+      {
+        id: 'verb_tobe',
+        titulo: 'Verb to be',
+        icono: '🔤',
+        vocabulario: [
+          { en: 'I am',      es: 'Yo soy / estoy' },
+          { en: 'You are',   es: 'Tú eres / estás' },
+          { en: 'He is',     es: 'Él es / está' },
+          { en: 'She is',    es: 'Ella es / está' },
+          { en: 'It is',     es: 'Eso es / está' },
+          { en: 'We are',    es: 'Nosotros somos' },
+          { en: 'They are',  es: 'Ellos son' },
+          { en: 'Am I?',     es: '¿Soy yo?' },
+          { en: 'Are you?',  es: '¿Eres tú?' },
+          { en: 'Is he?',    es: '¿Es él?' },
+          { en: 'I am not',  es: 'Yo no soy' },
+          { en: 'They are not', es: 'Ellos no son' },
+        ]
+      },
+      {
+        id: 'phrases',
+        titulo: 'Frases útiles',
+        icono: '💬',
+        vocabulario: [
+          { en: 'How are you?',     es: '¿Cómo estás?' },
+          { en: 'Nice to meet you', es: 'Mucho gusto' },
+          { en: 'See you later',    es: 'Hasta luego' },
+          { en: "What's your name?", es: '¿Cómo te llamas?' },
+          { en: 'My name is',       es: 'Me llamo' },
+          { en: "I don't understand", es: 'No entiendo' },
+          { en: 'Can you help me?',  es: '¿Puedes ayudarme?' },
+          { en: 'How much is it?',   es: '¿Cuánto cuesta?' },
+          { en: 'Where is...?',      es: '¿Dónde está...?' },
+          { en: "I'm sorry",        es: 'Lo siento' },
+          { en: 'Excuse me',        es: 'Disculpe' },
+          { en: "You're welcome",   es: 'De nada' },
+        ]
       }
     ]
   });
 
-  console.log('✅ Seed A1 completado —', 12, 'temas insertados en MongoDB');
+  console.log('✅ Seed A1 completado —', 21, 'temas insertados en MongoDB');
   mongoose.disconnect();
 }
