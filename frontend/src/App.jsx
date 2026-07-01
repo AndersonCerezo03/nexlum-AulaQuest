@@ -221,7 +221,7 @@ function stopAlex() {
   window.responsiveVoice && window.responsiveVoice.cancel();
 }
 
-function alexSpeak(text, rate, onEnd) {
+function alexSpeak(text, rate, onEnd, lang) {
   const mySeq = ++_alexCallSeq; // si se llama stopAlex (cierre del panel), esta reproducción se corta
   // onEnd se llama UNA sola vez. Watchdog: si el audio nunca dispara su evento
   // de fin (bug de Web Speech, blob inválido o red lenta), el flujo se libera igual
@@ -241,7 +241,7 @@ function alexSpeak(text, rate, onEnd) {
     if (!window.speechSynthesis) { finish(); return; }
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang='en-US'; u.rate=rate || 0.80; u.pitch=1.0; u.volume=1;
+    u.lang = lang === 'es' ? 'es-ES' : 'en-US'; u.rate=rate || 0.80; u.pitch=1.0; u.volume=1;
     u.onend = finish; u.onerror = finish;
     window.speechSynthesis.speak(u);
   };
@@ -259,12 +259,15 @@ function alexSpeak(text, rate, onEnd) {
   const token = window._alexToken || '';
   if (!token) { speakWS(); return; }   // sin token: voz del navegador
 
-  // Usar cache si existe
-  const cacheKey = text.substring(0,50);
+  // Español va a su propio endpoint para NO mezclar idiomas en un mismo audio
+  const endpoint = lang === 'es' ? '/api/tts/speak-es' : '/api/tts/speak';
+
+  // Usar cache si existe (la clave incluye idioma para no cruzar audios)
+  const cacheKey = (lang === 'es' ? 'es:' : 'en:') + text.substring(0,50);
   if (_ttsCache[cacheKey]) { playUrl(_ttsCache[cacheKey]); return; }
 
-  // Llamar al backend ElevenLabs (con fallback a la voz del navegador si falla)
-  fetch(API+'/api/tts/speak', {
+  // Llamar al backend de TTS (con fallback a la voz del navegador si falla)
+  fetch(API+endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
     body: JSON.stringify({ text }),
@@ -3611,7 +3614,7 @@ const handleAuth = async(e) => {
       setBubble('🏆 Ya completaste todas las palabras de este tema! Selecciona el siguiente tema desbloqueado.');
       setBubbleType('ok');
       setOrbState('speaking');
-      alexSpeak('Felicitaciones! Completaste todas las palabras de este tema. Selecciona el siguiente tema para continuar.', 0.85, ()=>setOrbState('idle'));
+      alexSpeak('Felicitaciones! Completaste todas las palabras de este tema. Selecciona el siguiente tema para continuar.', 0.85, ()=>setOrbState('idle'), 'es');
       return;
     }
     // Evitar repetir en sesión usando ref (siempre actualizado)
@@ -3664,7 +3667,7 @@ const handleAuth = async(e) => {
       if (e.error==='no-speech') {
         const msgSil = rand(ALEX_SILENCIO);
         setBubble('🔇 ' + msgSil); setBubbleType('err');
-        alexSpeak(msgSil, 0.85);
+        alexSpeak(msgSil, 0.85, null, 'es');
       } else if (e.error==='not-allowed') {
         setBubble('🎤 Micrófono bloqueado. Permite el acceso al mic en tu navegador.'); setBubbleType('err');
       } else {
@@ -3710,7 +3713,7 @@ const handleAuth = async(e) => {
           alexSpeak('Felicitaciones! Completaste este tema. El siguiente tema se ha desbloqueado!', 1.0, ()=>{
             setBubble('🎯 Selecciona el siguiente tema para continuar.');
             setBubbleType('');
-          });
+          }, 'es');
         } else {
           // Avanzar rapido — solo celebrar brevemente
           setBubble('✅ ' + word.en + ' = ' + word.es + ' — Correcto!'); setBubbleType('ok');
