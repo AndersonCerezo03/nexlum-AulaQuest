@@ -3805,7 +3805,7 @@ const handleAuth = async(e) => {
         <div style={{flex:'1 1 280px',display:'flex',flexDirection:'column',gap:'1rem'}}>
         {(()=>{
           const yaAprobado   = (user?.nivelesAprobados || []).includes(nivel);
-          const puedeExamen  = quizHabil && !yaAprobado;
+          const puedeExamen  = (esAdmin || quizHabil) && !yaAprobado;   // el admin siempre tiene acceso
           const temasTotal   = TOPICS.length;
           const temasHechos  = TOPICS.filter(t=>progTemas[t.id]?.completo).length;
           const progExamen   = temasTotal>0 ? Math.round((temasHechos/temasTotal)*100) : 0;
