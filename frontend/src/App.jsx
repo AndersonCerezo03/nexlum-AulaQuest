@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import ArenaGame from './Arena.jsx';
+import CityGame from './City.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'https://nexlum-aulaquest.onrender.com';
 const authH = (t) => ({ 'Content-Type':'application/json', 'Authorization':'Bearer '+t });
@@ -3522,6 +3523,13 @@ const handleAuth = async(e) => {
     />
   );
 
+  if (screen2==='city') return (
+    <CityGame
+      token={token}
+      onBack={()=>setScreen2('')}
+    />
+  );
+
   if (screen2==='alibi') return (
     <AlibiGame onBack={()=>setScreen2('')} />
   );
@@ -4020,6 +4028,34 @@ const handleAuth = async(e) => {
               <button onClick={()=>{ if(juegoDesbloqueado) setScreen2('arena'); }}
                 style={{flexShrink:0,background:juegoDesbloqueado?'linear-gradient(135deg,#06b6d4,#6366f1)':'rgba(30,41,59,.8)',color:juegoDesbloqueado?'#fff':'#334155',border:juegoDesbloqueado?'none':'1px solid rgba(99,102,241,.1)',padding:'10px 20px',borderRadius:10,fontWeight:700,fontSize:'.82rem',cursor:juegoDesbloqueado?'pointer':'not-allowed',whiteSpace:'nowrap',transition:'all .2s'}}>
                 {juegoDesbloqueado?'⚔️ Jugar':'🔒 Bloqueado'}
+              </button>
+            </div>
+          );
+        })()}
+
+        {nivel === 'A2' && (()=>{
+          const temasCompletados = TOPICS.filter(t => progTemas[t.id]?.completo).length;
+          const cityDesbloqueado = esAdmin || (temasCompletados >= 3);
+          const cityRestantes = Math.max(0, 3 - temasCompletados);
+          return (
+            <div onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px)';e.currentTarget.style.boxShadow='0 18px 40px rgba(6,182,212,.25)';}} onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 10px 30px rgba(0,0,0,.45)';}} style={{background: cityDesbloqueado ? 'linear-gradient(135deg,rgba(6,182,212,.08),rgba(99,102,241,.06))' : 'rgba(15,23,42,.5)',border:'1px solid '+(cityDesbloqueado?'rgba(6,182,212,.25)':'rgba(99,102,241,.08)'),borderRadius:16,padding:'1rem 1.5rem',marginBottom:'1rem',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem',opacity:cityDesbloqueado?1:0.7,boxShadow:'0 10px 30px rgba(0,0,0,.45)',transition:'transform .25s ease, box-shadow .25s ease'}}>
+              <div style={{flex:1}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                  <span style={{fontSize:'1.1rem'}}>{cityDesbloqueado?'🏙️':'🔒'}</span>
+                  <span style={{fontSize:'.88rem',fontWeight:700,color:'#e2e8f0'}}>AulaQuest City</span>
+                  <span style={{background:cityDesbloqueado?'rgba(6,182,212,.15)':'rgba(245,158,11,.12)',color:cityDesbloqueado?'#06b6d4':'#f59e0b',fontSize:'.6rem',fontWeight:700,padding:'2px 7px',borderRadius:50}}>
+                    {cityDesbloqueado?'COOPERATIVO':'BLOQUEADO'}
+                  </span>
+                </div>
+                <p style={{color:'#64748b',fontSize:'.75rem',margin:'0 0 6px'}}>
+                  {cityDesbloqueado
+                    ? 'Explora la ciudad con tu equipo: misiones con personajes, diccionario compartido y ayuda entre compañeros.'
+                    : 'Completa '+cityRestantes+' tema'+(cityRestantes>1?'s':'')+' más con Mr. Alex para desbloquear la ciudad.'}
+                </p>
+              </div>
+              <button onClick={()=>{ if(cityDesbloqueado) setScreen2('city'); }}
+                style={{flexShrink:0,background:cityDesbloqueado?'linear-gradient(135deg,#06b6d4,#6366f1)':'rgba(30,41,59,.8)',color:cityDesbloqueado?'#fff':'#334155',border:cityDesbloqueado?'none':'1px solid rgba(99,102,241,.1)',padding:'10px 20px',borderRadius:10,fontWeight:700,fontSize:'.82rem',cursor:cityDesbloqueado?'pointer':'not-allowed',whiteSpace:'nowrap',transition:'all .2s'}}>
+                {cityDesbloqueado?'🏙️ Jugar':'🔒 Bloqueado'}
               </button>
             </div>
           );

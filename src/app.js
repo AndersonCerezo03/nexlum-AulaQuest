@@ -25,6 +25,7 @@ app.use('/api/guide',    require('./routes/guide'));
 app.use('/api/admin',    require('./routes/admin'));
 app.use('/api/placement-test', require('./routes/placementTest'));
 app.use('/api/arena',    require('./routes/arena'));
+app.use('/api/city',     require('./routes/city'));
 
 app.get('/', (_req, res) => res.json({ status: 'Nexlum API OK' }));
 
@@ -37,6 +38,7 @@ const io = new Server(server, {
   },
 });
 require('./arena/arenaSocket')(io);
+require('./city/citySocket')(io);   // AulaQuest City (namespace /city — módulo aislado)
 
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => console.log(`🚀  Backend corriendo en: http://localhost:${PORT}`));
