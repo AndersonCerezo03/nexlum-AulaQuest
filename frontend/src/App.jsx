@@ -3672,14 +3672,14 @@ const handleAuth = async(e) => {
         </div>
         )}
 
-        <div style={{display:'flex',gap:'1rem',alignItems:'center',marginBottom:'1rem',flexWrap:'wrap',justifyContent:'center'}}>
+        <div style={{display:'flex',gap:'1rem',alignItems:'stretch',marginBottom:'1rem',flexWrap:'wrap',justifyContent:'center'}}>
         <div style={{flex:'1 1 280px',display:'flex',flexDirection:'column',gap:'1rem'}}>
         {nivel === 'A1' && (()=>{
           const temasCompletados = TOPICS.filter(t => progTemas[t.id]?.completo).length;
           const juegoDesbloqueado = esAdmin || (temasCompletados >= 3);
           const temasRestantes = Math.max(0, 3 - temasCompletados);
           return (
-            <div onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px)';e.currentTarget.style.boxShadow='0 18px 40px rgba(6,182,212,.25)';}} onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 10px 30px rgba(0,0,0,.45)';}} style={{background: juegoDesbloqueado ? 'linear-gradient(135deg,rgba(6,182,212,.08),rgba(99,102,241,.06))' : 'rgba(15,23,42,.5)',border:'1px solid '+(juegoDesbloqueado?'rgba(6,182,212,.25)':'rgba(99,102,241,.08)'),borderRadius:16,padding:'1rem 1.5rem',marginBottom:'1rem',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem',opacity:juegoDesbloqueado?1:0.7,boxShadow:'0 10px 30px rgba(0,0,0,.45)',transition:'transform .25s ease, box-shadow .25s ease'}}>
+            <div onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px)';e.currentTarget.style.boxShadow='0 18px 40px rgba(6,182,212,.25)';}} onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 10px 30px rgba(0,0,0,.45)';}} style={{background: juegoDesbloqueado ? 'linear-gradient(135deg,rgba(6,182,212,.08),rgba(99,102,241,.06))' : 'rgba(15,23,42,.5)',border:'1px solid '+(juegoDesbloqueado?'rgba(6,182,212,.25)':'rgba(99,102,241,.08)'),borderRadius:16,padding:'1rem 1.5rem',flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem',opacity:juegoDesbloqueado?1:0.7,boxShadow:'0 10px 30px rgba(0,0,0,.45)',transition:'transform .25s ease, box-shadow .25s ease'}}>
               <div style={{flex:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
                   <span style={{fontSize:'1.1rem'}}>{juegoDesbloqueado?'⚔️':'🔒'}</span>
@@ -3718,7 +3718,7 @@ const handleAuth = async(e) => {
           const cityDesbloqueado = esAdmin || (temasCompletados >= 3);
           const cityRestantes = Math.max(0, 3 - temasCompletados);
           return (
-            <div onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px)';e.currentTarget.style.boxShadow='0 18px 40px rgba(6,182,212,.25)';}} onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 10px 30px rgba(0,0,0,.45)';}} style={{background: cityDesbloqueado ? 'linear-gradient(135deg,rgba(6,182,212,.08),rgba(99,102,241,.06))' : 'rgba(15,23,42,.5)',border:'1px solid '+(cityDesbloqueado?'rgba(6,182,212,.25)':'rgba(99,102,241,.08)'),borderRadius:16,padding:'1rem 1.5rem',marginBottom:'1rem',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem',opacity:cityDesbloqueado?1:0.7,boxShadow:'0 10px 30px rgba(0,0,0,.45)',transition:'transform .25s ease, box-shadow .25s ease'}}>
+            <div onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px)';e.currentTarget.style.boxShadow='0 18px 40px rgba(6,182,212,.25)';}} onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 10px 30px rgba(0,0,0,.45)';}} style={{background: cityDesbloqueado ? 'linear-gradient(135deg,rgba(6,182,212,.08),rgba(99,102,241,.06))' : 'rgba(15,23,42,.5)',border:'1px solid '+(cityDesbloqueado?'rgba(6,182,212,.25)':'rgba(99,102,241,.08)'),borderRadius:16,padding:'1rem 1.5rem',flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem',opacity:cityDesbloqueado?1:0.7,boxShadow:'0 10px 30px rgba(0,0,0,.45)',transition:'transform .25s ease, box-shadow .25s ease'}}>
               <div style={{flex:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
                   <span style={{fontSize:'1.1rem'}}>{cityDesbloqueado?'🏙️':'🔒'}</span>
@@ -3753,7 +3753,7 @@ const handleAuth = async(e) => {
           const temasRestantes = Math.max(0, 3 - temasCompletados);
           const accent = CFG.accent;
           return (
-            <div onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px)';e.currentTarget.style.boxShadow=`0 18px 40px rgba(${accent},.3)`;}} onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 10px 30px rgba(0,0,0,.45)';}} style={{background: juegoDesbloqueado ? `linear-gradient(135deg,rgba(${accent},.08),rgba(${accent},.04))` : 'rgba(15,23,42,.5)',border:'1px solid '+(juegoDesbloqueado?`rgba(${accent},.25)`:'rgba(99,102,241,.08)'),borderRadius:16,padding:'1rem 1.5rem',marginBottom:'1rem',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem',opacity:juegoDesbloqueado?1:0.7,boxShadow:'0 10px 30px rgba(0,0,0,.45)',transition:'transform .25s ease, box-shadow .25s ease'}}>
+            <div onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px)';e.currentTarget.style.boxShadow=`0 18px 40px rgba(${accent},.3)`;}} onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 10px 30px rgba(0,0,0,.45)';}} style={{background: juegoDesbloqueado ? `linear-gradient(135deg,rgba(${accent},.08),rgba(${accent},.04))` : 'rgba(15,23,42,.5)',border:'1px solid '+(juegoDesbloqueado?`rgba(${accent},.25)`:'rgba(99,102,241,.08)'),borderRadius:16,padding:'1rem 1.5rem',flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem',opacity:juegoDesbloqueado?1:0.7,boxShadow:'0 10px 30px rgba(0,0,0,.45)',transition:'transform .25s ease, box-shadow .25s ease'}}>
               <div style={{flex:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
                   <span style={{fontSize:'1.1rem'}}>{juegoDesbloqueado?CFG.icono:'🔒'}</span>
@@ -3788,7 +3788,7 @@ const handleAuth = async(e) => {
         })()}
         </div>
 
-        <div style={{flex:'0 0 auto',display:'flex',flexDirection:'column',alignItems:'center',gap:6,cursor:'pointer',padding:'0 .4rem'}} onClick={()=>openCloud(tema||null)}>
+        <div style={{flex:'0 0 auto',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6,cursor:'pointer',padding:'0 .4rem'}} onClick={()=>openCloud(tema||null)}>
           <div style={{position:'relative',width:64,height:64}}>
             {[0,5,10].map((ins,i)=>(
               <div key={i} style={{position:'absolute',top:ins,left:ins,right:ins,bottom:ins,borderRadius:'50%',border:'2px solid transparent',
@@ -3811,7 +3811,7 @@ const handleAuth = async(e) => {
           const progExamen   = temasTotal>0 ? Math.round((temasHechos/temasTotal)*100) : 0;
 
           if (yaAprobado) return (
-            <div style={{background:'rgba(16,185,129,.06)',border:'1px solid rgba(16,185,129,.2)',borderRadius:16,padding:'1rem 1.5rem',marginBottom:'1rem',display:'flex',alignItems:'center',gap:12}}>
+            <div style={{background:'rgba(16,185,129,.06)',border:'1px solid rgba(16,185,129,.2)',borderRadius:16,padding:'1rem 1.5rem',flex:1,display:'flex',alignItems:'center',gap:12}}>
               <div style={{width:36,height:36,borderRadius:10,background:'rgba(16,185,129,.15)',border:'1px solid rgba(16,185,129,.3)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                 <span style={{fontSize:'1rem'}}>✅</span>
               </div>
@@ -3823,8 +3823,8 @@ const handleAuth = async(e) => {
           );
 
           return (
-            <div onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px)';e.currentTarget.style.boxShadow='0 18px 40px rgba(16,185,129,.25)';}} onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 10px 30px rgba(0,0,0,.45)';}} style={{background: puedeExamen ? 'linear-gradient(135deg,rgba(16,185,129,.08),rgba(6,182,212,.06))' : 'rgba(15,23,42,.5)',border:`1px solid ${puedeExamen ? 'rgba(16,185,129,.25)' : 'rgba(99,102,241,.12)'}`,borderRadius:16,padding:'1.2rem 1.5rem',marginBottom:'1rem',boxShadow:'0 10px 30px rgba(0,0,0,.45)',transition:'transform .25s ease, box-shadow .25s ease'}}>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem'}}>
+            <div onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px)';e.currentTarget.style.boxShadow='0 18px 40px rgba(16,185,129,.25)';}} onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 10px 30px rgba(0,0,0,.45)';}} style={{background: puedeExamen ? 'linear-gradient(135deg,rgba(16,185,129,.08),rgba(6,182,212,.06))' : 'rgba(15,23,42,.5)',border:`1px solid ${puedeExamen ? 'rgba(16,185,129,.25)' : 'rgba(99,102,241,.12)'}`,borderRadius:16,padding:'1.2rem 1.5rem',flex:1,display:'flex',alignItems:'center',boxShadow:'0 10px 30px rgba(0,0,0,.45)',transition:'transform .25s ease, box-shadow .25s ease'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem',width:'100%'}}>
                 <div style={{flex:1}}>
                   <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
                     <div style={{width:32,height:32,borderRadius:8,background: puedeExamen ? 'rgba(16,185,129,.15)' : 'rgba(99,102,241,.08)',border:`1px solid ${puedeExamen ? 'rgba(16,185,129,.3)' : 'rgba(99,102,241,.15)'}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
