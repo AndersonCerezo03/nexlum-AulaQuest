@@ -140,8 +140,121 @@ mongoose.connect(process.env.MONGODB_URI)
             { en: 'I would rather stay', es: 'Preferiria quedarme' }, { en: 'He tends to forget', es: 'Tiende a olvidar' },
           ]
         },
+        {
+          id: 'feelings_b1', titulo: 'Emociones y estados de animo', icono: '😌',
+          vocabulario: [
+            { en: 'Frustrated', es: 'Frustrado/a' }, { en: 'Relieved', es: 'Aliviado/a' },
+            { en: 'Overwhelmed', es: 'Abrumado/a' }, { en: 'Anxious', es: 'Ansioso/a' },
+            { en: 'Delighted', es: 'Encantado/a' }, { en: 'Ashamed', es: 'Avergonzado/a' },
+            { en: 'Confused', es: 'Confundido/a' }, { en: 'Hopeful', es: 'Esperanzado/a' },
+            { en: 'Homesick', es: 'Con nostalgia de casa' }, { en: 'Motivated', es: 'Motivado/a' },
+            { en: 'Discouraged', es: 'Desanimado/a' }, { en: 'Thrilled', es: 'Emocionadisimo/a' },
+            { en: 'Upset', es: 'Molesto / Afligido' }, { en: 'Calm', es: 'Tranquilo/a' },
+          ]
+        },
+        {
+          id: 'personality', titulo: 'Personalidad y caracter', icono: '🧠',
+          vocabulario: [
+            { en: 'Reliable', es: 'Confiable' }, { en: 'Stubborn', es: 'Terco/a' },
+            { en: 'Generous', es: 'Generoso/a' }, { en: 'Selfish', es: 'Egoista' },
+            { en: 'Outgoing', es: 'Extrovertido/a' }, { en: 'Shy', es: 'Timido/a' },
+            { en: 'Hardworking', es: 'Trabajador/a' }, { en: 'Lazy', es: 'Perezoso/a' },
+            { en: 'Honest', es: 'Honesto/a' }, { en: 'Sensible', es: 'Sensato/a' },
+            { en: 'Sensitive', es: 'Sensible' }, { en: 'Easygoing', es: 'Relajado / De trato facil' },
+            { en: 'Ambitious', es: 'Ambicioso/a' }, { en: 'Polite', es: 'Educado / Cortes' },
+          ]
+        },
+        {
+          id: 'relationships', titulo: 'Relaciones y vida social', icono: '❤️',
+          vocabulario: [
+            { en: 'To get along with', es: 'Llevarse bien con' }, { en: 'To argue', es: 'Discutir' },
+            { en: 'To trust', es: 'Confiar' }, { en: 'To support', es: 'Apoyar' },
+            { en: 'To forgive', es: 'Perdonar' }, { en: 'To apologize', es: 'Disculparse' },
+            { en: 'Acquaintance', es: 'Conocido/a' }, { en: 'Close friend', es: 'Amigo cercano' },
+            { en: 'Couple', es: 'Pareja' }, { en: 'To date someone', es: 'Salir con alguien' },
+            { en: 'Engagement', es: 'Compromiso' }, { en: 'Wedding', es: 'Boda' },
+            { en: 'To rely on', es: 'Contar con / Depender de' }, { en: 'Misunderstanding', es: 'Malentendido' },
+          ]
+        },
+        {
+          id: 'money', titulo: 'Dinero y finanzas personales', icono: '💰',
+          vocabulario: [
+            { en: 'Savings', es: 'Ahorros' }, { en: 'Budget', es: 'Presupuesto' },
+            { en: 'Loan', es: 'Prestamo' }, { en: 'Debt', es: 'Deuda' },
+            { en: 'To afford', es: 'Poder pagar / Permitirse' }, { en: 'To waste money', es: 'Desperdiciar dinero' },
+            { en: 'To invest', es: 'Invertir' }, { en: 'Bank account', es: 'Cuenta bancaria' },
+            { en: 'Interest rate', es: 'Tasa de interes' }, { en: 'Bill', es: 'Factura / Cuenta' },
+            { en: 'Expenses', es: 'Gastos' }, { en: 'Income', es: 'Ingresos' },
+            { en: 'To owe', es: 'Deber (dinero)' }, { en: 'Wealthy', es: 'Adinerado/a' },
+          ]
+        },
+        {
+          id: 'sports_fitness', titulo: 'Deportes y competencia', icono: '⚽',
+          vocabulario: [
+            { en: 'To train', es: 'Entrenar' }, { en: 'Coach', es: 'Entrenador/a' },
+            { en: 'Competition', es: 'Competencia' }, { en: 'Championship', es: 'Campeonato' },
+            { en: 'Teamwork', es: 'Trabajo en equipo' }, { en: 'To beat', es: 'Vencer / Derrotar' },
+            { en: 'To score', es: 'Anotar / Marcar' }, { en: 'Referee', es: 'Arbitro' },
+            { en: 'Opponent', es: 'Oponente / Rival' }, { en: 'Injury', es: 'Lesion' },
+            { en: 'To warm up', es: 'Calentar' }, { en: 'Strength', es: 'Fuerza' },
+            { en: 'Endurance', es: 'Resistencia' }, { en: 'To give it your best', es: 'Dar lo mejor de ti' },
+          ]
+        },
+        {
+          id: 'crime_law', titulo: 'Crimen y justicia', icono: '🚔',
+          vocabulario: [
+            { en: 'Thief', es: 'Ladron/a' }, { en: 'To steal', es: 'Robar' },
+            { en: 'Robbery', es: 'Robo / Atraco' }, { en: 'Witness', es: 'Testigo' },
+            { en: 'Judge', es: 'Juez/a' }, { en: 'Trial', es: 'Juicio' },
+            { en: 'Guilty', es: 'Culpable' }, { en: 'Innocent', es: 'Inocente' },
+            { en: 'Fine', es: 'Multa' }, { en: 'To arrest', es: 'Arrestar' },
+            { en: 'Evidence', es: 'Evidencia / Pruebas' }, { en: 'Lawyer', es: 'Abogado/a' },
+            { en: 'To commit a crime', es: 'Cometer un delito' }, { en: 'Punishment', es: 'Castigo' },
+          ]
+        },
+        {
+          id: 'disasters', titulo: 'Desastres naturales', icono: '🌋',
+          vocabulario: [
+            { en: 'Earthquake', es: 'Terremoto' }, { en: 'Flood', es: 'Inundacion' },
+            { en: 'Drought', es: 'Sequia' }, { en: 'Hurricane', es: 'Huracan' },
+            { en: 'Wildfire', es: 'Incendio forestal' }, { en: 'Landslide', es: 'Deslizamiento de tierra' },
+            { en: 'Volcanic eruption', es: 'Erupcion volcanica' }, { en: 'To rescue', es: 'Rescatar' },
+            { en: 'Emergency', es: 'Emergencia' }, { en: 'Shelter', es: 'Refugio' },
+            { en: 'Survivor', es: 'Sobreviviente' }, { en: 'Damage', es: 'Dano / Destrozo' },
+            { en: 'To evacuate', es: 'Evacuar' }, { en: 'Warning', es: 'Advertencia / Alerta' },
+          ]
+        },
+        {
+          id: 'phrasal_b1', titulo: 'Phrasal verbs intermedios', icono: '🔗',
+          vocabulario: [
+            { en: 'Carry on', es: 'Continuar' }, { en: 'Run out of', es: 'Quedarse sin' },
+            { en: 'Look after', es: 'Cuidar de' }, { en: 'Set up', es: 'Establecer / Montar' },
+            { en: 'Turn down', es: 'Rechazar' }, { en: 'Give back', es: 'Devolver' },
+            { en: 'Get over', es: 'Superar' }, { en: 'Put off', es: 'Posponer' },
+            { en: 'Come across', es: 'Encontrarse con / Toparse' }, { en: 'Break down', es: 'Averiarse / Descomponerse' },
+            { en: 'Figure out', es: 'Descifrar / Entender' }, { en: 'Show up', es: 'Aparecer / Presentarse' },
+            { en: 'Take up', es: 'Empezar (un hobby)' }, { en: 'Look forward to', es: 'Esperar con ansias' },
+          ]
+        },
+        {
+          id: 'reported_speech', titulo: 'Estilo indirecto y deduccion', icono: '🗣️',
+          vocabulario: [
+            { en: 'He said that he was tired', es: 'El dijo que estaba cansado' },
+            { en: 'She told me to wait', es: 'Ella me dijo que esperara' },
+            { en: 'They asked if I could help', es: 'Preguntaron si podia ayudar' },
+            { en: 'He asked where I lived', es: 'El pregunto donde vivia' },
+            { en: 'It must have been late', es: 'Debio haber sido tarde' },
+            { en: 'She might be busy', es: 'Ella podria estar ocupada' },
+            { en: 'You should have called', es: 'Deberias haber llamado' },
+            { en: 'It cannot be true', es: 'No puede ser cierto' },
+            { en: 'He promised to come', es: 'El prometio venir' },
+            { en: 'She suggested going out', es: 'Ella sugirio salir' },
+            { en: 'They warned us not to go', es: 'Nos advirtieron que no fueramos' },
+            { en: 'He admitted making a mistake', es: 'El admitio haber cometido un error' },
+          ]
+        },
       ]
     });
-    console.log('✅ Seed B1 completo — 12 temas');
+    console.log('✅ Seed B1 completo — 21 temas');
     mongoose.disconnect();
   }).catch(e => { console.error(e.message); process.exit(1); });
