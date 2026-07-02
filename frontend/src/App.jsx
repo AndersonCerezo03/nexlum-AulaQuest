@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import ArenaGame from './Arena.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'https://nexlum-aulaquest.onrender.com';
 const authH = (t) => ({ 'Content-Type':'application/json', 'Authorization':'Bearer '+t });
@@ -1248,270 +1249,6 @@ function JobInterview({ token, user, onBack }) {
   );
 }
 
-// ─── MINIJUEGO: MEMORIA — EMPAREJA CARTAS ────────────────────────────────────
-function MemoryGame({ nivel, vocabData, onBack }) {
-  const [cards,     setCards]     = useState([]);
-  const [flipped,   setFlipped]   = useState([]);
-  const [matched,   setMatched]   = useState([]);
-  const [moves,     setMoves]     = useState(0);
-  const [phase,     setPhase]     = useState('ready');
-  const [feedback,  setFeedback]  = useState(null);
-  const [combo,     setCombo]     = useState(0);
-  const [stars,     setStars]     = useState(0);
-  const [timer,     setTimer]     = useState(0);
-  const timerRef = useRef(null);
-  const lockRef  = useRef(false);
-
-  const PAIRS = 8; // 8 pares = 16 cartas
-
-  const buildCards = () => {
-    const all = Object.values(vocabData).flat();
-    const shuffledPool = [...all].sort(() => Math.random() - 0.5).slice(0, PAIRS);
-    const deck = [];
-    shuffledPool.forEach((w, i) => {
-      deck.push({ id: i*2,   pairId: i, type: 'en', text: w.en, emoji: getEmoji(w.en) });
-      deck.push({ id: i*2+1, pairId: i, type: 'es', text: w.es, emoji: '' });
-    });
-    return deck.sort(() => Math.random() - 0.5);
-  };
-
-  const getEmoji = (word) => {
-    const map = {
-      'Hello':'👋','Goodbye':'👋','Apple':'🍎','Water':'💧','House':'🏠','Book':'📚',
-      'Cat':'🐱','Dog':'🐶','Sun':'☀️','Moon':'🌙','Tree':'🌳','Car':'🚗',
-      'Fish':'🐟','Bird':'🐦','Flower':'🌸','Star':'⭐','Heart':'❤️','Fire':'🔥',
-      'Eye':'👁️','Hand':'✋','Head':'🗣️','Foot':'🦶','Nose':'👃','Mouth':'👄',
-      'Red':'🔴','Blue':'🔵','Green':'🟢','Yellow':'🟡','Black':'⚫','White':'⚪',
-      'Mother':'👩','Father':'👨','Brother':'👦','Sister':'👧','Baby':'👶',
-      'Bread':'🍞','Milk':'🥛','Egg':'🥚','Rice':'🍚','Soup':'🍲','Meat':'🥩',
-      'One':'1️⃣','Two':'2️⃣','Three':'3️⃣','Four':'4️⃣','Five':'5️⃣',
-      'Run':'🏃','Eat':'🍴','Sleep':'😴','Talk':'💬','Work':'💼','Play':'🎮',
-      'Big':'📦','Small':'🔬','Good':'👍','Bad':'👎','Hot':'🌡️','Cold':'🧊',
-    };
-    return map[word] || '📝';
-  };
-
-  const startGame = () => {
-    const deck = buildCards();
-    setCards(deck); setFlipped([]); setMatched([]);
-    setMoves(0); setCombo(0); setFeedback(null); setTimer(0);
-    setPhase('playing');
-    timerRef.current = setInterval(() => setTimer(t => t + 1), 1000);
-  };
-
-  useEffect(() => () => clearInterval(timerRef.current), []);
-
-  const calcStars = (mv, time) => {
-    if (mv <= PAIRS + 2 && time < 60) return 3;
-    if (mv <= PAIRS + 6 && time < 120) return 2;
-    return 1;
-  };
-
-  const flipCard = (card) => {
-    if (lockRef.current) return;
-    if (matched.includes(card.pairId)) return;
-    if (flipped.find(f => f.id === card.id)) return;
-    if (flipped.length === 2) return;
-
-    const newFlipped = [...flipped, card];
-    setFlipped(newFlipped);
-
-    if (newFlipped.length === 2) {
-      lockRef.current = true;
-      setMoves(m => m + 1);
-      const [a, b] = newFlipped;
-
-      if (a.pairId === b.pairId && a.type !== b.type) {
-        // Match!
-        const newCombo = combo + 1;
-        setCombo(newCombo);
-        const comboMsg = newCombo >= 3 ? ' 🔥 COMBO x' + newCombo + '!' : '';
-        setFeedback({ msg: '¡Correcto! ' + a.text + ' = ' + b.text + comboMsg, ok: true });
-        setTimeout(() => {
-          const newMatched = [...matched, a.pairId];
-          setMatched(newMatched);
-          setFlipped([]);
-          setFeedback(null);
-          lockRef.current = false;
-          if (newMatched.length === PAIRS) {
-            clearInterval(timerRef.current);
-            const s = calcStars(moves + 1, timer);
-            setStars(s);
-            setPhase('win');
-          }
-        }, 800);
-      } else {
-        // No match
-        setCombo(0);
-        setFeedback({ msg: '¡Casi! Sigue intentando 💪', ok: false });
-        setTimeout(() => {
-          setFlipped([]);
-          setFeedback(null);
-          lockRef.current = false;
-        }, 1200);
-      }
-    }
-  };
-
-  const isFlipped = (card) => flipped.find(f => f.id === card.id) || matched.includes(card.pairId);
-  const isMatched = (card) => matched.includes(card.pairId);
-
-  const fmtTime = (s) => Math.floor(s/60)+':'+(s%60<10?'0':'')+s%60;
-
-  const containerStyle = {
-    background: '#020617', minHeight: '100vh',
-    fontFamily: "'Poppins',sans-serif", color: '#e2e8f0',
-  };
-
-  // READY
-  if (phase === 'ready') return (
-    <div style={containerStyle}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',padding:'2rem'}}>
-        <div style={{maxWidth:480,width:'100%',textAlign:'center'}}>
-          <div style={{fontSize:'4rem',marginBottom:'1rem'}}>🃏</div>
-          <h2 style={{fontSize:'2rem',fontWeight:900,marginBottom:'.5rem',background:'linear-gradient(135deg,#10b981,#06b6d4)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>
-            Empareja las Cartas
-          </h2>
-          <p style={{color:'#64748b',marginBottom:'2rem',lineHeight:1.6}}>
-            Voltea las cartas y encuentra las parejas.<br/>
-            Une cada palabra en <strong style={{color:'#a5b4fc'}}>inglés</strong> con su traducción en <strong style={{color:'#10b981'}}>español</strong>.<br/>
-            <span style={{color:'#f59e0b'}}>¡Menos movimientos = más estrellas! ⭐</span>
-          </p>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:'2rem'}}>
-            {[['🃏',PAIRS+' pares','16 cartas en total'],['⭐','3 estrellas','menos de '+(PAIRS+2)+' movimientos'],['⏱️','Contra el tiempo','¡más rápido más puntos!']].map(([i,t,d])=>(
-              <div key={t} style={{background:'#0f172a',border:'1px solid rgba(16,185,129,.2)',borderRadius:12,padding:'1rem'}}>
-                <div style={{fontSize:'1.5rem',marginBottom:4}}>{i}</div>
-                <div style={{fontSize:'.85rem',fontWeight:700,color:'#e2e8f0'}}>{t}</div>
-                <div style={{fontSize:'.72rem',color:'#64748b'}}>{d}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{display:'flex',gap:12,justifyContent:'center'}}>
-            <button onClick={startGame} style={{background:'linear-gradient(135deg,#10b981,#06b6d4)',color:'#fff',border:'none',padding:'14px 32px',borderRadius:12,fontWeight:700,fontSize:'1rem',cursor:'pointer',boxShadow:'0 0 30px rgba(16,185,129,.35)'}}>
-              🎮 ¡Jugar!
-            </button>
-            <button onClick={onBack} style={{background:'transparent',color:'#64748b',border:'1px solid rgba(99,102,241,.2)',padding:'14px 24px',borderRadius:12,fontWeight:600,cursor:'pointer'}}>
-              Volver
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // WIN
-  if (phase === 'win') return (
-    <div style={containerStyle}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',padding:'2rem'}}>
-        <div style={{maxWidth:420,width:'100%',textAlign:'center'}}>
-          <div style={{fontSize:'4rem',marginBottom:'.5rem'}}>{'⭐'.repeat(stars)}</div>
-          <h2 style={{fontSize:'2rem',fontWeight:900,marginBottom:'.5rem',background:'linear-gradient(135deg,#10b981,#06b6d4)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>
-            ¡Lo lograste!
-          </h2>
-          <p style={{color:'#64748b',marginBottom:'1.5rem'}}>Encontraste todas las parejas. Tu memoria es increíble! 🧠</p>
-          <div style={{background:'#0f172a',border:'1px solid rgba(16,185,129,.2)',borderRadius:16,padding:'1.5rem',marginBottom:'1.5rem'}}>
-            {[['🎯','Movimientos',moves],['⏱️','Tiempo',fmtTime(timer)],['⭐','Estrellas',stars+' / 3']].map(([i,l,v])=>(
-              <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,.04)'}}>
-                <span style={{color:'#64748b',fontSize:'.85rem'}}>{i} {l}</span>
-                <span style={{color:'#10b981',fontWeight:700}}>{v}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{display:'flex',gap:12,justifyContent:'center'}}>
-            <button onClick={startGame} style={{background:'linear-gradient(135deg,#10b981,#06b6d4)',color:'#fff',border:'none',padding:'12px 28px',borderRadius:12,fontWeight:700,cursor:'pointer'}}>
-              🔄 Jugar de nuevo
-            </button>
-            <button onClick={onBack} style={{background:'transparent',color:'#64748b',border:'1px solid rgba(99,102,241,.2)',padding:'12px 20px',borderRadius:12,fontWeight:600,cursor:'pointer'}}>
-              Volver al aula
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // PLAYING
-  return (
-    <div style={containerStyle}>
-      {/* HUD */}
-      <div style={{position:'sticky',top:0,zIndex:100,background:'rgba(2,6,23,.95)',borderBottom:'1px solid rgba(16,185,129,.15)',padding:'10px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',backdropFilter:'blur(10px)'}}>
-        <div style={{fontSize:'.85rem',color:'#64748b'}}>⏱️ <span style={{color:'#e2e8f0',fontWeight:700}}>{fmtTime(timer)}</span></div>
-        <div style={{textAlign:'center'}}>
-          <div style={{fontSize:'.75rem',color:'#64748b'}}>Pares: <span style={{color:'#10b981',fontWeight:700}}>{matched.length}/{PAIRS}</span></div>
-          {combo >= 3 && <div style={{fontSize:'.65rem',color:'#f59e0b',fontWeight:700}}>🔥 COMBO x{combo}</div>}
-        </div>
-        <div style={{fontSize:'.85rem',color:'#64748b'}}>Movimientos: <span style={{color:'#e2e8f0',fontWeight:700}}>{moves}</span></div>
-      </div>
-
-      {/* Feedback */}
-      {feedback && (
-        <div style={{position:'fixed',top:60,left:'50%',transform:'translateX(-50%)',zIndex:200,
-          background:feedback.ok?'rgba(16,185,129,.15)':'rgba(239,68,68,.1)',
-          border:'1px solid '+(feedback.ok?'#10b981':'rgba(239,68,68,.3)'),
-          borderRadius:10,padding:'8px 20px',fontSize:'.85rem',fontWeight:700,
-          color:feedback.ok?'#10b981':'#f87171',whiteSpace:'nowrap',
-          boxShadow:'0 4px 20px rgba(0,0,0,.3)'}}>
-          {feedback.msg}
-        </div>
-      )}
-
-      {/* Grid de cartas */}
-      <div style={{padding:'1.5rem',maxWidth:700,margin:'0 auto'}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12}}>
-          {cards.map(card => {
-            const flippedCard = isFlipped(card);
-            const matchedCard = isMatched(card);
-            const isEN = card.type === 'en';
-            return (
-              <div key={card.id} onClick={() => !matchedCard && flipCard(card)}
-                style={{
-                  height:90, borderRadius:14, cursor: matchedCard?'default':'pointer',
-                  perspective:600, transition:'transform .1s',
-                  transform: (!matchedCard && !flippedCard) ? 'scale(1)' : 'scale(1)',
-                }}>
-                <div style={{
-                  width:'100%', height:'100%', position:'relative',
-                  transformStyle:'preserve-3d',
-                  transition:'transform .4s cubic-bezier(.4,0,.2,1)',
-                  transform: flippedCard ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                }}>
-                  {/* Dorso */}
-                  <div style={{
-                    position:'absolute',width:'100%',height:'100%',backfaceVisibility:'hidden',
-                    background:'linear-gradient(135deg,#1e1b4b,#0f172a)',
-                    border:'1px solid rgba(99,102,241,.2)',borderRadius:14,
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    fontSize:'1.8rem',
-                  }}>🎴</div>
-                  {/* Frente */}
-                  <div style={{
-                    position:'absolute',width:'100%',height:'100%',backfaceVisibility:'hidden',
-                    transform:'rotateY(180deg)',
-                    background: matchedCard
-                      ? 'rgba(16,185,129,.12)'
-                      : isEN ? 'rgba(99,102,241,.12)' : 'rgba(6,182,212,.12)',
-                    border:'1px solid '+(matchedCard?'rgba(16,185,129,.4)':isEN?'rgba(99,102,241,.4)':'rgba(6,182,212,.4)'),
-                    borderRadius:14,
-                    display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
-                    padding:'8px',textAlign:'center',
-                  }}>
-                    {isEN && <div style={{fontSize:'1.2rem',marginBottom:2}}>{card.emoji}</div>}
-                    <div style={{fontSize:isEN?'.75rem':'.8rem',fontWeight:700,color:matchedCard?'#10b981':isEN?'#a5b4fc':'#67e8f9',lineHeight:1.2}}>
-                      {card.text}
-                    </div>
-                    <div style={{fontSize:'.55rem',color:'#475569',marginTop:3,fontWeight:600,letterSpacing:'.05em'}}>
-                      {isEN?'🇬🇧 INGLÉS':'🇨🇴 ESPAÑOL'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── MINIJUEGO: LLUVIA DE PALABRAS ───────────────────────────────────────────
 function WordRain({ nivel, token, vocabData, onBack }) {
@@ -3778,10 +3515,9 @@ const handleAuth = async(e) => {
     />
   );
 
-  if (screen2==='memory') return (
-    <MemoryGame
-      nivel={nivel}
-      vocabData={vocabData}
+  if (screen2==='arena') return (
+    <ArenaGame
+      token={token}
       onBack={()=>setScreen2('')}
     />
   );
@@ -4255,19 +3991,19 @@ const handleAuth = async(e) => {
           const juegoDesbloqueado = esAdmin || (temasCompletados >= 3);
           const temasRestantes = Math.max(0, 3 - temasCompletados);
           return (
-            <div onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px)';e.currentTarget.style.boxShadow='0 18px 40px rgba(16,185,129,.25)';}} onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 10px 30px rgba(0,0,0,.45)';}} style={{background: juegoDesbloqueado ? 'linear-gradient(135deg,rgba(16,185,129,.08),rgba(6,182,212,.06))' : 'rgba(15,23,42,.5)',border:'1px solid '+(juegoDesbloqueado?'rgba(16,185,129,.25)':'rgba(99,102,241,.08)'),borderRadius:16,padding:'1rem 1.5rem',marginBottom:'1rem',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem',opacity:juegoDesbloqueado?1:0.7,boxShadow:'0 10px 30px rgba(0,0,0,.45)',transition:'transform .25s ease, box-shadow .25s ease'}}>
+            <div onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-6px)';e.currentTarget.style.boxShadow='0 18px 40px rgba(6,182,212,.25)';}} onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 10px 30px rgba(0,0,0,.45)';}} style={{background: juegoDesbloqueado ? 'linear-gradient(135deg,rgba(6,182,212,.08),rgba(99,102,241,.06))' : 'rgba(15,23,42,.5)',border:'1px solid '+(juegoDesbloqueado?'rgba(6,182,212,.25)':'rgba(99,102,241,.08)'),borderRadius:16,padding:'1rem 1.5rem',marginBottom:'1rem',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem',opacity:juegoDesbloqueado?1:0.7,boxShadow:'0 10px 30px rgba(0,0,0,.45)',transition:'transform .25s ease, box-shadow .25s ease'}}>
               <div style={{flex:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                  <span style={{fontSize:'1.1rem'}}>{juegoDesbloqueado?'🃏':'🔒'}</span>
-                  <span style={{fontSize:'.88rem',fontWeight:700,color:'#e2e8f0'}}>Empareja las Cartas</span>
-                  <span style={{background:juegoDesbloqueado?'rgba(16,185,129,.15)':'rgba(245,158,11,.12)',color:juegoDesbloqueado?'#10b981':'#f59e0b',fontSize:'.6rem',fontWeight:700,padding:'2px 7px',borderRadius:50}}>
-                    {juegoDesbloqueado?'MINIJUEGO A1':'BLOQUEADO'}
+                  <span style={{fontSize:'1.1rem'}}>{juegoDesbloqueado?'⚔️':'🔒'}</span>
+                  <span style={{fontSize:'.88rem',fontWeight:700,color:'#e2e8f0'}}>AulaQuest Arena</span>
+                  <span style={{background:juegoDesbloqueado?'rgba(6,182,212,.15)':'rgba(245,158,11,.12)',color:juegoDesbloqueado?'#06b6d4':'#f59e0b',fontSize:'.6rem',fontWeight:700,padding:'2px 7px',borderRadius:50}}>
+                    {juegoDesbloqueado?'MULTIJUGADOR':'BLOQUEADO'}
                   </span>
                 </div>
                 <p style={{color:'#64748b',fontSize:'.75rem',margin:'0 0 6px'}}>
                   {juegoDesbloqueado
-                    ? 'Voltea las cartas y une cada palabra en inglés con su traducción en español. Menos movimientos = más estrellas!'
-                    : 'Completa '+temasRestantes+' tema'+(temasRestantes>1?'s':'')+' más con Mr. Alex para desbloquear este juego.'}
+                    ? 'Quiz en vivo con tus compañeros: crea una sala o entra con un código de 4 dígitos. ¡El más rápido gana!'
+                    : 'Completa '+temasRestantes+' tema'+(temasRestantes>1?'s':'')+' más con Mr. Alex para desbloquear la Arena.'}
                 </p>
                 {!juegoDesbloqueado && (
                   <div>
@@ -4276,14 +4012,14 @@ const handleAuth = async(e) => {
                       <span style={{fontSize:'.68rem',color:'#6366f1',fontWeight:700}}>{temasCompletados} / 3 temas</span>
                     </div>
                     <div style={{height:4,background:'rgba(99,102,241,.08)',borderRadius:10,overflow:'hidden'}}>
-                      <div style={{height:'100%',width:(temasCompletados/3*100)+'%',background:'linear-gradient(90deg,#10b981,#06b6d4)',borderRadius:10,transition:'width .4s'}}/>
+                      <div style={{height:'100%',width:(temasCompletados/3*100)+'%',background:'linear-gradient(90deg,#06b6d4,#6366f1)',borderRadius:10,transition:'width .4s'}}/>
                     </div>
                   </div>
                 )}
               </div>
-              <button onClick={()=>{ if(juegoDesbloqueado) setScreen2('memory'); }}
-                style={{flexShrink:0,background:juegoDesbloqueado?'linear-gradient(135deg,#10b981,#06b6d4)':'rgba(30,41,59,.8)',color:juegoDesbloqueado?'#fff':'#334155',border:juegoDesbloqueado?'none':'1px solid rgba(99,102,241,.1)',padding:'10px 20px',borderRadius:10,fontWeight:700,fontSize:'.82rem',cursor:juegoDesbloqueado?'pointer':'not-allowed',whiteSpace:'nowrap',transition:'all .2s'}}>
-                {juegoDesbloqueado?'🎮 Jugar':'🔒 Bloqueado'}
+              <button onClick={()=>{ if(juegoDesbloqueado) setScreen2('arena'); }}
+                style={{flexShrink:0,background:juegoDesbloqueado?'linear-gradient(135deg,#06b6d4,#6366f1)':'rgba(30,41,59,.8)',color:juegoDesbloqueado?'#fff':'#334155',border:juegoDesbloqueado?'none':'1px solid rgba(99,102,241,.1)',padding:'10px 20px',borderRadius:10,fontWeight:700,fontSize:'.82rem',cursor:juegoDesbloqueado?'pointer':'not-allowed',whiteSpace:'nowrap',transition:'all .2s'}}>
+                {juegoDesbloqueado?'⚔️ Jugar':'🔒 Bloqueado'}
               </button>
             </div>
           );
