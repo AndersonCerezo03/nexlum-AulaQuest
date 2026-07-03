@@ -2550,6 +2550,7 @@ export default function App() {
   const [showMaterial,       setShowMaterial]       = useState(false); // panel de material de apoyo (PDFs)
   const nivel = (esAdmin && adminVistaNivel) ? adminVistaNivel : (user?.englishLevel || 'A1');
   const [TOPICS,      setTOPICS]      = useState([]);
+  const [vw,          setVw]          = useState(typeof window!=='undefined'?window.innerWidth:1200); // ancho para el panal responsive
   const [vocabData,   setVocabData]   = useState({});
   const [progTemas,   setProgTemas]   = useState({});   // {temaId: {completadas:[], total, completo, desbloqueado}}
   const [todosComp,   setTodosComp]   = useState(false);
@@ -2725,6 +2726,13 @@ const handleAuth = async(e) => {
   };
 
   // Cierre de sesion automatico tras 1 minuto sin actividad
+  // Ancho de ventana para que el panal de temas escale en tablet y móvil
+  useEffect(()=>{
+    const onR = () => setVw(window.innerWidth);
+    window.addEventListener('resize', onR);
+    return () => window.removeEventListener('resize', onR);
+  }, []);
+
   useEffect(()=>{
     if (!token) return;
     let timer;
@@ -3327,12 +3335,23 @@ const handleAuth = async(e) => {
         </div>
 
           {(()=>{
-            const filas=[]; let _i=0,_w=5;
-            while(_i<TOPICS.length){ filas.push(TOPICS.slice(_i,_i+_w)); _i+=_w; _w=_w===5?4:5; }
+            // Panal responsive: menos columnas y hexágonos más pequeños en tablet/móvil
+            const bigCols = vw < 480 ? 3 : vw < 760 ? 4 : 5;
+            const smallCols = bigCols - 1;
+            let hexW = Math.floor(Math.min(vw - 20, 880) / bigCols);
+            hexW = Math.max(84, Math.min(172, hexW));
+            const hexH = Math.round(hexW * 1.105);
+            const overlap = Math.round(hexH * 0.253);
+            const emojiRem = Math.max(1.15, hexW / 78);
+            const titleRem = Math.max(0.58, hexW / 220);
+            const progRem  = Math.max(0.5,  hexW / 278);
+            const titlePad = Math.round(hexW * 0.15);
+            const filas=[]; let _i=0,_w=bigCols;
+            while(_i<TOPICS.length){ filas.push(TOPICS.slice(_i,_i+_w)); _i+=_w; _w=_w===bigCols?smallCols:bigCols; }
             return (
             <div style={{marginBottom:'1rem'}}>
             {filas.map((fila,_fi)=>(
-              <div key={_fi} style={{display:'flex',justifyContent:'center',flexWrap:'wrap',marginTop:_fi===0?0:-48}}>
+              <div key={_fi} style={{display:'flex',justifyContent:'center',flexWrap:'nowrap',marginTop:_fi===0?0:-overlap}}>
               {fila.map((t)=>{
                 const idx       = TOPICS.indexOf(t);
                 const prog      = progTemas[t.id] || {};
@@ -3353,16 +3372,16 @@ const handleAuth = async(e) => {
                       setTema(activo?null:t); usedWordsRef.current=[]; setWord(null);
                       if (!activo) openCloud(t);
                     }}
-                    style={{width:172,height:190,margin:'0 -1px',position:'relative',cursor:desbloq?'pointer':'not-allowed',transition:'transform .22s ease,filter .22s ease',willChange:'transform,filter'}}
+                    style={{width:hexW,height:hexH,flex:'0 0 auto',margin:'0 -1px',position:'relative',cursor:desbloq?'pointer':'not-allowed',transition:'transform .22s ease,filter .22s ease',willChange:'transform,filter'}}
                     onMouseEnter={e=>{ if(desbloq){ const g=completo?'16,185,129':activo?'139,92,246':'99,102,241'; e.currentTarget.style.zIndex='9'; e.currentTarget.style.transform='scale(1.09) translateY(-3px)'; e.currentTarget.style.filter=`brightness(1.12) drop-shadow(0 12px 24px rgba(${g},.65))`; } }}
                     onMouseLeave={e=>{ e.currentTarget.style.zIndex=''; e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.filter='none'; }}>
                     <div style={{width:'100%',height:'100%',clipPath:'polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:completo?'linear-gradient(160deg,rgba(16,185,129,.2),rgba(16,185,129,.07))':activo?'linear-gradient(160deg,rgba(139,92,246,.32),rgba(99,102,241,.18))':desbloq?'linear-gradient(160deg,#1e2a44,#141c2e)':'#0e1420',opacity:desbloq?1:0.5,position:'relative'}}>
                     {completo && <span style={{position:'absolute',top:'19%',right:'30%',fontSize:'.75rem',color:'#34d399',fontWeight:700}}>✓</span>}
                     {!desbloqBase && <span style={{position:'absolute',top:'19%',right:'28%',fontSize:'.78rem'}}>🔒</span>}
                     {bloqueadoDiario && <span style={{position:'absolute',top:'19%',right:'28%',fontSize:'.78rem'}} title="Límite diario">🌙</span>}
-                    <div style={{fontSize:'2.2rem',lineHeight:1}}>{t.icon}</div>
-                    <div style={{fontSize:'.78rem',color:completo?'#6ee7b7':activo?'#c4b5fd':desbloq?'#e8eef7':'#475569',fontWeight:activo||completo?600:500,marginTop:9,textAlign:'center',padding:'0 26px',lineHeight:1.25,letterSpacing:'.01em'}}>{t.name}</div>
-                    {desbloq && total>0 && <div style={{fontSize:'.62rem',color:'#7c8aa3',marginTop:5,fontWeight:500}}>{completadas}/{total}</div>}
+                    <div style={{fontSize:emojiRem+'rem',lineHeight:1}}>{t.icon}</div>
+                    <div style={{fontSize:titleRem+'rem',color:completo?'#6ee7b7':activo?'#c4b5fd':desbloq?'#e8eef7':'#475569',fontWeight:activo||completo?600:500,marginTop:Math.round(hexW*0.05),textAlign:'center',padding:'0 '+titlePad+'px',lineHeight:1.2,letterSpacing:'.01em'}}>{t.name}</div>
+                    {desbloq && total>0 && <div style={{fontSize:progRem+'rem',color:'#7c8aa3',marginTop:3,fontWeight:500}}>{completadas}/{total}</div>}
                     </div>
                   </div>
                 );
