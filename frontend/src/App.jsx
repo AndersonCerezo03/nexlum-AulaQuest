@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import ArenaGame from './Arena.jsx';
 import CityGame from './City.jsx';
+import FilesGame from './Files.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'https://nexlum-aulaquest.onrender.com';
 const authH = (t) => ({ 'Content-Type':'application/json', 'Authorization':'Bearer '+t });
@@ -1701,129 +1702,6 @@ function AdminPanel({ token, user, onBack, onVerNivel }) {
   );
 }
 
-function AlibiGame({ onBack }) {
-  const PLACES = [
-    "At a modern Italian restaurant downtown",
-    "Inside the biggest supermarket in the city",
-    "At a noisy rock concert in the park",
-    "In the quiet public library studying for an exam",
-    "At a friend's birthday party in a big house",
-    "Waiting at the airport terminal for a delayed flight",
-  ];
-  const ACTIONS = [
-    "Eating a huge pizza and drinking soda",
-    "Buying a lot of chocolate and energy drinks",
-    "Dancing near the stage and losing a phone",
-    "Reading a boring book about ancient history",
-    "Singing karaoke terribly in front of 30 people",
-    "Sleeping on a very uncomfortable plastic chair",
-  ];
-  const WITNESSES = [
-    "A famous local chef wearing a white uniform",
-    "An angry security guard with a mustache",
-    "Two noisy teenagers playing video games",
-    "An old lady who was walking a tiny dog",
-    "A friendly taxi driver who didn't speak English",
-    "Your English teacher's secret twin brother",
-  ];
-  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
-
-  const [alibi, setAlibi] = useState({ place:'Pulsa "Generar coartada" para empezar...', action:'-', witness:'-' });
-  const [timeLeft, setTimeLeft] = useState(180);
-  const [running, setRunning]   = useState(false);
-  const intervalRef = useRef(null);
-
-  const stop = () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
-  useEffect(()=>()=>stop(), []);
-
-  const generar = () => {
-    setAlibi({ place: pick(PLACES), action: pick(ACTIONS), witness: pick(WITNESSES) });
-    resetTimer();
-  };
-  const startTimer = () => {
-    stop(); setRunning(true);
-    intervalRef.current = setInterval(()=>{
-      setTimeLeft(prev => {
-        if (prev <= 1) { stop(); setRunning(false); return 0; }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-  const resetTimer = () => { stop(); setRunning(false); setTimeLeft(180); };
-
-  const mm = String(Math.floor(timeLeft/60)).padStart(2,'0');
-  const ss = String(timeLeft%60).padStart(2,'0');
-  const timerLabel = (timeLeft===0 && !running) ? '¡A HABLAR!' : `${mm}:${ss}`;
-
-  const CY = '#00adb5', RED = '#ff4757';
-  const card = { background:'#1e1e1e', borderRadius:12, padding:25, boxShadow:'0 10px 30px rgba(0,0,0,.5)', border:'1px solid #2a2a2a' };
-  const elem = { background:'#262626', padding:15, borderRadius:8, borderLeft:`5px solid ${CY}` };
-  const lbl  = { display:'block', fontSize:'.85rem', color:CY, textTransform:'uppercase', fontWeight:'bold', marginBottom:5 };
-  const btn  = { background:CY, color:'#121212', border:'none', padding:'12px 24px', fontSize:'1rem', fontWeight:'bold', borderRadius:6, cursor:'pointer', width:'100%' };
-  const badge= { background:CY, color:'#121212', padding:'2px 6px', borderRadius:4, fontWeight:'bold', fontSize:'.8rem', marginRight:5 };
-
-  return (
-    <div style={{background:'#121212',minHeight:'100vh',color:'#eee',fontFamily:"'Segoe UI',Tahoma,sans-serif",padding:20}}>
-      <div style={{maxWidth:1050,margin:'0 auto'}}>
-        <button onClick={onBack} style={{background:'transparent',border:'1px solid rgba(0,173,181,.5)',color:CY,padding:'7px 16px',borderRadius:8,cursor:'pointer',fontWeight:600,marginBottom:18}}>← Volver al aula</button>
-        <header style={{textAlign:'center',marginBottom:30}}>
-          <h1 style={{color:CY,fontSize:'2.5rem',margin:'0 0 5px',letterSpacing:1}}>The Alibi Generator</h1>
-          <p style={{color:'#a0a0a0',fontSize:'1.1rem',margin:0}}>B1 Level • Past Continuous, Connectors & Interrogation</p>
-        </header>
-
-        <div style={{display:'grid',gridTemplateColumns:'1.2fr 1fr',gap:25}}>
-          <div style={card}>
-            <h3 style={{marginTop:0,color:CY,borderBottom:'2px solid #2a2a2a',paddingBottom:10,fontSize:'1.3rem'}}>🚨 Suspects' Mission Card</h3>
-            <p style={{color:'#a0a0a0',fontSize:'.95rem',marginBottom:20}}>
-              Genera la historia base. Los dos sospechosos deben coordinar los detalles usando la guía gramatical de la derecha. ¡No pueden contradecirse!
-            </p>
-            <div style={{display:'flex',flexDirection:'column',gap:15,marginBottom:20}}>
-              <div style={elem}><label style={lbl}>📍 Where were you?</label><span style={{fontSize:'1.2rem',fontWeight:500}}>{alibi.place}</span></div>
-              <div style={elem}><label style={lbl}>🛠️ What were you doing?</label><span style={{fontSize:'1.2rem',fontWeight:500}}>{alibi.action}</span></div>
-              <div style={elem}><label style={lbl}>👥 Who was with you?</label><span style={{fontSize:'1.2rem',fontWeight:500}}>{alibi.witness}</span></div>
-            </div>
-            <button style={btn} onClick={generar}>🎲 Generar nueva coartada</button>
-
-            <div style={{textAlign:'center',marginTop:20,background:'#1a2f3b',padding:15,borderRadius:8,border:`1px solid ${CY}`}}>
-              <span style={{fontSize:'.9rem',textTransform:'uppercase',letterSpacing:1}}>Reloj de preparación</span>
-              <div style={{fontSize:'2.5rem',fontWeight:'bold',color:(timeLeft===0&&!running)?RED:'#eee',margin:'10px 0',fontFamily:'monospace'}}>{timerLabel}</div>
-              <div style={{display:'flex',gap:10}}>
-                <button onClick={startTimer} disabled={running} style={{...btn,background:'#444',color:'#fff',opacity:running?0.6:1,cursor:running?'default':'pointer'}}>Iniciar preparación</button>
-                <button onClick={resetTimer} style={{...btn,background:RED,color:'#fff'}}>Reiniciar</button>
-              </div>
-            </div>
-          </div>
-
-          <div style={card}>
-            <h3 style={{marginTop:0,color:CY,borderBottom:'2px solid #2a2a2a',paddingBottom:10,fontSize:'1.3rem'}}>🎯 B1 Language Requirements</h3>
-            <p style={{color:'#a0a0a0',fontSize:'.95rem'}}>Usa obligatoriamente estas estructuras durante el interrogatorio para ganar puntos extra:</p>
-            <ul style={{listStyle:'none',padding:0}}>
-              {[
-                ['Past Continuous','"We were watching a movie when..."'],
-                ['Because','To explain the reason of an action.'],
-                ['While','To describe two actions at the same time.'],
-                ['Although','To show a contrast or surprise.'],
-                ['Suddenly','To introduce an unexpected event.'],
-              ].map(([b,t],i)=>(
-                <li key={i} style={{background:'#262626',padding:'10px 15px',marginBottom:8,borderRadius:6,fontSize:'.95rem'}}>
-                  <span style={badge}>{b}</span>{t}
-                </li>
-              ))}
-            </ul>
-            <h3 style={{marginTop:25,color:CY,borderBottom:'2px solid #2a2a2a',paddingBottom:10,fontSize:'1.3rem'}}>💬 Suggested Questions</h3>
-            <p style={{fontStyle:'italic',fontSize:'.9rem',color:'#a0a0a0'}}>
-              • What exactly were you wearing?<br/>
-              • What time did you arrive and leave?<br/>
-              • Why did you decide to go there?<br/>
-              • What was the weather like?
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function CrisisGame({ onBack }) {
   const INFLUENCERS = [
     "A famous fitness coach with 10 million followers",
@@ -3210,8 +3088,8 @@ const handleAuth = async(e) => {
     />
   );
 
-  if (screen2==='alibi') return (
-    <AlibiGame onBack={()=>setScreen2('')} />
+  if (screen2==='files') return (
+    <FilesGame token={token} onBack={()=>setScreen2('')} />
   );
 
   if (screen2==='crisis') return (
@@ -3743,7 +3621,7 @@ const handleAuth = async(e) => {
 
         {['B1','B2','C1','C2'].includes(nivel) && (()=>{
           const CFG = {
-            B1: { nombre:'The Alibi Generator', icono:'🕵️', accent:'0,173,181',  txt:'#00adb5', screen:'alibi',    grad:'linear-gradient(135deg,#00adb5,#0a7d82)', desc:'Crea una coartada perfecta y resiste el interrogatorio usando Past Continuous y conectores B1 (because, while, although).' },
+            B1: { nombre:'AulaQuest Files — Detective Cases', icono:'🕵️', accent:'6,182,212',  txt:'#67e8f9', screen:'files',    grad:'linear-gradient(135deg,#06b6d4,#0891b2)', desc:'Resuelve el Caso #7 con tu escuadra: interroga sospechosos en past simple y present perfect, comparte pistas en vivo y descubre al culpable.' },
             B2: { nombre:'Influencer Crisis Manager', icono:'📢', accent:'168,85,247', txt:'#c4b5fd', screen:'crisis',   grad:'linear-gradient(135deg,#a855f7,#7c3aed)', desc:'Maneja una crisis de relaciones públicas de un influencer usando especulación B2, condicionales mixtos y voz pasiva.' },
             C1: { nombre:'The Startup Shark Tank', icono:'🦈', accent:'6,182,212',  txt:'#67e8f9', screen:'sharktank', grad:'linear-gradient(135deg,#06b6d4,#0891b2)', desc:'Presenta tu startup ante inversionistas usando inversiones formales, idioms de negocios y phrasal verbs C1 bajo presión.' },
             C2: { nombre:'Geopolitical Crisis Room', icono:'🌍', accent:'244,63,94',  txt:'#fda4af', screen:'crisisroom', grad:'linear-gradient(135deg,#f43f5e,#be123c)', desc:'Lidera un comité internacional ante una crisis global usando retórica C2, diplomacia, subjuntivo y condicionales sin "if".' },
