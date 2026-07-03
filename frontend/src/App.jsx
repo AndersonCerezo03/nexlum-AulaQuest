@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import ArenaGame from './Arena.jsx';
 import CityGame from './City.jsx';
 import FilesGame from './Files.jsx';
+import RoyaleGame from './Royale.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'https://nexlum-aulaquest.onrender.com';
 const authH = (t) => ({ 'Content-Type':'application/json', 'Authorization':'Bearer '+t });
@@ -1702,119 +1703,6 @@ function AdminPanel({ token, user, onBack, onVerNivel }) {
   );
 }
 
-function CrisisGame({ onBack }) {
-  const INFLUENCERS = [
-    "A famous fitness coach with 10 million followers",
-    "An extreme environmental activist and YouTuber",
-    "A high-tech billionaire tech-reviewer",
-    "A luxury travel vlogger who targets young adults",
-    "A traditional grandma chef who went viral on TikTok",
-  ];
-  const SCANDALS = [
-    "Was caught on camera eating a massive beef burger at a secret local restaurant.",
-    "Was spotted throwing tons of plastic bottles into the ocean from a private yacht.",
-    "Accidentally revealed during a livestream that they use an old cracked iPhone instead of the brand they sponsor.",
-    "Was exposed for photoshopped vacation pictures; they were actually staying in a cheap local hotel room.",
-    "Was caught buying all of their 'homemade' meals from a fast-food chain down the street.",
-  ];
-  const RULES = [
-    "Must use at least two Mixed Conditionals (e.g., 'If we hadn't done that, our reputation wouldn't be in danger now').",
-    "Must use passive structures to avoid direct blame (e.g., 'Mistakes were made', 'The video was leaked').",
-    "Must heavily include B2 adverbs of certainty/doubt (e.g., 'undoubtedly, highly unlikely, presumably').",
-    "Must use strong phrasal verbs for problem-solving (e.g., 'deal with, face up to, back down, clear up').",
-    "Must defend the case using inversion for dramatic emphasis (e.g., 'Not only did he apologize, but he also...').",
-  ];
-  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
-
-  const [data, setData] = useState({ inf:'Pulsa "Lanzar escándalo" para empezar...', scandal:'-', rule:'-' });
-  const [timeLeft, setTimeLeft] = useState(180);
-  const [running, setRunning]   = useState(false);
-  const intervalRef = useRef(null);
-
-  const stop = () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
-  useEffect(()=>()=>stop(), []);
-
-  const deploy = () => {
-    setData({ inf: pick(INFLUENCERS), scandal: pick(SCANDALS), rule: pick(RULES) });
-    resetTimer();
-  };
-  const startTimer = () => {
-    stop(); setRunning(true);
-    intervalRef.current = setInterval(()=>{
-      setTimeLeft(prev => { if (prev <= 1) { stop(); setRunning(false); return 0; } return prev - 1; });
-    }, 1000);
-  };
-  const resetTimer = () => { stop(); setRunning(false); setTimeLeft(180); };
-
-  const mm = String(Math.floor(timeLeft/60)).padStart(2,'0');
-  const ss = String(timeLeft%60).padStart(2,'0');
-  const timerLabel = (timeLeft===0 && !running) ? 'LIVE PRESS!' : `${mm}:${ss}`;
-
-  const PUR='#a855f7', GRN='#10b981', DGR='#ef4444';
-  const card = { background:'#1e293b', borderRadius:16, padding:30, boxShadow:'0 20px 25px -5px rgba(0,0,0,.3)', border:'1px solid #334155' };
-  const slot = (hl)=>({ background:'#0f172a', padding:18, borderRadius:10, borderLeft:`5px solid ${hl?GRN:PUR}` });
-  const lbl  = { display:'block', fontSize:'.8rem', color:'#94a3b8', textTransform:'uppercase', letterSpacing:1, fontWeight:'bold', marginBottom:6 };
-  const btn  = { background:'linear-gradient(135deg,#a855f7,#7c3aed)', color:'#fff', border:'none', padding:'14px 28px', fontSize:'1.05rem', fontWeight:'bold', borderRadius:8, cursor:'pointer', width:'100%', boxShadow:'0 4px 12px rgba(168,85,247,.3)' };
-
-  return (
-    <div style={{background:'#0f172a',minHeight:'100vh',color:'#f8fafc',fontFamily:"'Segoe UI',Roboto,Arial,sans-serif",padding:20}}>
-      <div style={{maxWidth:1100,margin:'0 auto'}}>
-        <button onClick={onBack} style={{background:'transparent',border:'1px solid rgba(168,85,247,.5)',color:PUR,padding:'7px 16px',borderRadius:8,cursor:'pointer',fontWeight:600,marginBottom:18}}>← Volver al aula</button>
-        <header style={{textAlign:'center',marginBottom:30}}>
-          <h1 style={{color:PUR,fontSize:'2.6rem',margin:'0 0 5px',fontWeight:800}}>The Influencer Crisis Manager</h1>
-          <p style={{color:'#94a3b8',fontSize:'1.1rem',margin:0}}>B2 Level • Advanced Negotiation, Speculation & Fluency Integration</p>
-        </header>
-
-        <div style={{display:'grid',gridTemplateColumns:'1.3fr 1fr',gap:25}}>
-          <div style={card}>
-            <h3 style={{marginTop:0,color:PUR,borderBottom:'2px solid #334155',paddingBottom:12,fontSize:'1.4rem'}}>📢 Scandal Deployment Card</h3>
-            <p style={{color:'#94a3b8',fontSize:'.95rem',marginBottom:25}}>
-              Genera una crisis de relaciones públicas. El equipo de mánagers discute la estrategia de defensa mientras la prensa prepara sus ataques.
-            </p>
-            <div style={{display:'flex',flexDirection:'column',gap:18,marginBottom:25}}>
-              <div style={slot(false)}><label style={lbl}>👤 Target Influencer</label><span style={{fontSize:'1.25rem',fontWeight:600}}>{data.inf}</span></div>
-              <div style={slot(false)}><label style={lbl}>🔥 The PR Scandal</label><span style={{fontSize:'1.25rem',fontWeight:600}}>{data.scandal}</span></div>
-              <div style={slot(true)}><label style={lbl}>🎯 Mandatory Language Rule (B2)</label><span style={{fontSize:'1.25rem',fontWeight:600,color:GRN}}>{data.rule}</span></div>
-            </div>
-            <button style={btn} onClick={deploy}>🎲 Lanzar escándalo</button>
-
-            <div style={{marginTop:25,background:'linear-gradient(180deg,#1e293b,#0f172a)',padding:20,borderRadius:12,border:'1px solid #334155',textAlign:'center'}}>
-              <span style={{fontSize:'.85rem',textTransform:'uppercase',fontWeight:'bold',color:'#94a3b8'}}>Press Conference Warm-Up Clock</span>
-              <div style={{fontSize:'3rem',fontWeight:800,color:(timeLeft===0&&!running)?DGR:'#f8fafc',margin:'10px 0',fontFamily:"'Courier New',monospace",letterSpacing:2}}>{timerLabel}</div>
-              <div style={{display:'flex',gap:10}}>
-                <button onClick={startTimer} disabled={running} style={{...btn,background:'#334155',boxShadow:'none',opacity:running?0.6:1,cursor:running?'default':'pointer'}}>Iniciar preparación</button>
-                <button onClick={resetTimer} style={{...btn,background:DGR,boxShadow:'none'}}>Reiniciar</button>
-              </div>
-            </div>
-          </div>
-
-          <div style={card}>
-            <h3 style={{marginTop:0,color:PUR,borderBottom:'2px solid #334155',paddingBottom:12,fontSize:'1.4rem'}}>🧩 Integrated Level Blueprint</h3>
-            <p style={{color:'#94a3b8',fontSize:'.9rem',marginBottom:20}}>Este juego fusiona las herramientas de los niveles previos con los objetivos B2:</p>
-            <ul style={{listStyle:'none',padding:0,margin:0}}>
-              {[
-                ['🔄 Level A2/B1 Integration (The Foundation)','Describir detalladamente las circunstancias del hecho (preposiciones de lugar, adjetivos de emoción) y usar conectores de contraste (however, despite).'],
-                ['⚡ Level B2 Speculation (The Core Challenge)','La prensa interroga usando modales perfectos: "You must have known that...", "He couldn\'t have done that alone."'],
-                ['🗣️ Proactive Fluency (The Goal)','No se permite leer notas. Deben justificar las acciones del influencer improvisando argumentos lógicos de inmediato.'],
-              ].map(([b,t],i)=>(
-                <li key={i} style={{background:'#0f172a',padding:'12px 15px',marginBottom:10,borderRadius:8,fontSize:'.95rem',borderRight:`3px solid ${GRN}`}}>
-                  <span style={{color:GRN,fontWeight:'bold',display:'block',marginBottom:4,fontSize:'.85rem'}}>{b}</span>{t}
-                </li>
-              ))}
-            </ul>
-            <h3 style={{marginTop:25,color:PUR,borderBottom:'2px solid #334155',paddingBottom:12,fontSize:'1.4rem'}}>🎙️ Journalists' Attack Guide</h3>
-            <p style={{fontStyle:'italic',fontSize:'.9rem',color:'#94a3b8',lineHeight:1.5}}>
-              • "How can you justify this behavior?"<br/>
-              • "If this is true, what will you do to compensate your followers?"<br/>
-              • "It is highly unlikely that nobody noticed before..."
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function SharkTankGame({ onBack }) {
   const PRODUCTS = [
     "An AI-powered smart pillow that wakes you up by gently slapping your face when you oversleep.",
@@ -3092,8 +2980,8 @@ const handleAuth = async(e) => {
     <FilesGame token={token} onBack={()=>setScreen2('')} />
   );
 
-  if (screen2==='crisis') return (
-    <CrisisGame onBack={()=>setScreen2('')} />
+  if (screen2==='royale') return (
+    <RoyaleGame token={token} onBack={()=>setScreen2('')} />
   );
 
   if (screen2==='sharktank') return (
@@ -3622,7 +3510,7 @@ const handleAuth = async(e) => {
         {['B1','B2','C1','C2'].includes(nivel) && (()=>{
           const CFG = {
             B1: { nombre:'AulaQuest Files — Detective Cases', icono:'🕵️', accent:'6,182,212',  txt:'#67e8f9', screen:'files',    grad:'linear-gradient(135deg,#06b6d4,#0891b2)', desc:'Resuelve el Caso #7 con tu escuadra: interroga sospechosos en past simple y present perfect, comparte pistas en vivo y descubre al culpable.' },
-            B2: { nombre:'Influencer Crisis Manager', icono:'📢', accent:'168,85,247', txt:'#c4b5fd', screen:'crisis',   grad:'linear-gradient(135deg,#a855f7,#7c3aed)', desc:'Maneja una crisis de relaciones públicas de un influencer usando especulación B2, condicionales mixtos y voz pasiva.' },
+            B2: { nombre:'AulaQuest Royale — English Battle Royale', icono:'🪂', accent:'6,182,212', txt:'#67e8f9', screen:'royale',   grad:'linear-gradient(135deg,#06b6d4,#0891b2)', desc:'Battle royale de inglés: sobrevive la tormenta en escuadras, abre cofres, gana duelos 1v1 y revive a tu equipo con retos B2 (phrasal verbs, idioms, listening).' },
             C1: { nombre:'The Startup Shark Tank', icono:'🦈', accent:'6,182,212',  txt:'#67e8f9', screen:'sharktank', grad:'linear-gradient(135deg,#06b6d4,#0891b2)', desc:'Presenta tu startup ante inversionistas usando inversiones formales, idioms de negocios y phrasal verbs C1 bajo presión.' },
             C2: { nombre:'Geopolitical Crisis Room', icono:'🌍', accent:'244,63,94',  txt:'#fda4af', screen:'crisisroom', grad:'linear-gradient(135deg,#f43f5e,#be123c)', desc:'Lidera un comité internacional ante una crisis global usando retórica C2, diplomacia, subjuntivo y condicionales sin "if".' },
           }[nivel];
