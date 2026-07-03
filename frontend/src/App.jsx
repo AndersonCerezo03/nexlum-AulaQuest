@@ -73,13 +73,19 @@ const KF = `
   @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
   @keyframes pulse-glow { 0%,100%{opacity:.06} 50%{opacity:.12} }
   @keyframes fadeInUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
-  @media (max-width: 760px) {
+  html, body, #root { overflow-x: hidden !important; max-width: 100vw !important; }
+  /* Tablets y móviles (todo lo que no sea escritorio ancho) */
+  @media (max-width: 1024px) {
     .aq-2col { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
     .aq-topics { grid-template-columns: repeat(2,1fr) !important; }
-    html, body { overflow-x: hidden !important; max-width: 100% !important; }
     .aq-bar { flex-wrap: wrap !important; height: auto !important; padding: 8px 12px !important; gap: 8px !important; }
+    nav { padding-left: 1rem !important; padding-right: 1rem !important; }
     #root, body > div { overflow-x: hidden !important; max-width: 100vw !important; }
-    * { max-width: 100% !important; }
+    * { max-width: 100% !important; box-sizing: border-box; }
+  }
+  /* Móviles */
+  @media (max-width: 620px) {
+    nav { padding-left: .7rem !important; padding-right: .7rem !important; }
   }
   `;
 
