@@ -3338,14 +3338,14 @@ const handleAuth = async(e) => {
             // Panal responsive: menos columnas y hexágonos más pequeños en tablet/móvil
             const bigCols = vw < 480 ? 3 : vw < 760 ? 4 : 5;
             const smallCols = bigCols - 1;
-            let hexW = Math.floor(Math.min(vw - 20, 880) / bigCols);
-            hexW = Math.max(84, Math.min(172, hexW));
+            let hexW = Math.floor(Math.min(vw - 14, 900) / bigCols);
+            hexW = Math.max(92, Math.min(174, hexW));
             const hexH = Math.round(hexW * 1.105);
             const overlap = Math.round(hexH * 0.253);
-            const emojiRem = Math.max(1.15, hexW / 78);
-            const titleRem = Math.max(0.58, hexW / 220);
-            const progRem  = Math.max(0.5,  hexW / 278);
-            const titlePad = Math.round(hexW * 0.15);
+            const emojiRem = Math.max(1.4,  hexW / 74);
+            const titleRem = Math.max(0.66, hexW / 210);
+            const progRem  = Math.max(0.56, hexW / 260);
+            const titlePad = Math.round(hexW * 0.13);
             const filas=[]; let _i=0,_w=bigCols;
             while(_i<TOPICS.length){ filas.push(TOPICS.slice(_i,_i+_w)); _i+=_w; _w=_w===bigCols?smallCols:bigCols; }
             return (
