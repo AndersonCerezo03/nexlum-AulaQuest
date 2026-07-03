@@ -158,6 +158,23 @@ function playAudio(url, rate, onEnd) {
 }
 
 // Alex habla en inglés y luego en español
+// Caché de audio por texto+idioma. Permite PRECARGAR la palabra mientras suena
+// el saludo, para que la práctica arranque al instante (no re-descarga).
+const _ttsBlobCache = {};
+function ttsBlob(text, lang, token) {
+  if (!text || !token) return Promise.resolve(null);
+  const key = (lang==='es'?'es:':lang==='slow'?'slow:':'en:') + text;
+  if (_ttsBlobCache[key]) return _ttsBlobCache[key];
+  const path = lang==='es' ? '/api/tts/speak-es' : lang==='slow' ? '/api/tts/speak-slow' : '/api/tts/speak';
+  const p = fetch(API+path, { method:'POST', headers:{'Content-Type':'application/json',Authorization:'Bearer '+token}, body: JSON.stringify({ text }) })
+    .then(r => r.ok ? r.blob() : null).catch(() => null)
+    .then(b => { if (!b) delete _ttsBlobCache[key]; return b; });   // no cachear fallos (permite reintentar)
+  _ttsBlobCache[key] = p;
+  return p;
+}
+// Precargar el audio (inglés + español) de una palabra
+function prefetchWord(w, token) { if (w && token) { ttsBlob(w.en, 'en', token); ttsBlob(w.es, 'es', token); } }
+
 async function alexSpeakBilingual(enText, esText, token, onEnd, onStart) {
   const mySeq = ++_alexCallSeq; // si se llama stopAlex (cierre del panel), esta reproducción se corta
   // onEnd se llama UNA sola vez. Watchdog: libera el flujo aunque un audio de la
@@ -185,13 +202,10 @@ async function alexSpeakBilingual(enText, esText, token, onEnd, onStart) {
   if (!token) { fallback(); return; }
 
   try {
-    const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
-
-    // Ambas peticiones arrancan en paralelo, pero NO esperamos a las dos:
-    // en cuanto el inglés está listo, Mr. Alex empieza a hablar. El español se
-    // resuelve mientras tanto y se reproduce cuando llega su turno.
-    const pEn = fetch(API+'/api/tts/speak',    { method:'POST', headers, body: JSON.stringify({ text: enText }) }).then(r => r.ok ? r.blob() : null);
-    const pEs = fetch(API+'/api/tts/speak-es', { method:'POST', headers, body: JSON.stringify({ text: esText }) }).then(r => r.ok ? r.blob() : null).catch(() => null);
+    // Usa el audio precargado/cacheado si existe (arranque instantáneo); si no, lo pide.
+    // En cuanto el inglés está listo, Mr. Alex habla; el español se resuelve en paralelo.
+    const pEn = ttsBlob(enText, 'en', token);
+    const pEs = ttsBlob(esText, 'es', token);
 
     const blobEn = await pEn;
     if (mySeq !== _alexCallSeq) { finish(); return; }   // se cerró el panel mientras cargaba
@@ -2793,6 +2807,12 @@ const handleAuth = async(e) => {
     setBubbleType('');
     alexSpeak(temaObj ? temaObj.name : 'Let us begin', 0.85,
       ()=>setOrbState('idle'), null, ()=>setOrbState('speaking'));
+    // Precargar la primera palabra pendiente para que la práctica arranque al instante
+    if (temaObj) {
+      const done = (progTemas[temaObj.id]?.palabrasCompletadas) || [];
+      const first = (vocabData[temaObj.id] || []).find(w => !done.includes(w.en));
+      prefetchWord(first, window._alexToken || token);
+    }
   };
 
   const closeCloud = () => {
@@ -2840,6 +2860,7 @@ const handleAuth = async(e) => {
     const w = pool[0];
     usedWordsRef.current = [...usedWordsRef.current, w.en];
     setWord(w);
+    prefetchWord(pool[1] || pendientes.find(x => x.en !== w.en), window._alexToken || token); // adelantar la siguiente
     setBubble('📖 ' + w.en + ' = ' + w.es + ' — Escucha y repite!'); setBubbleType('');
     setOrbState('thinking');
     // Solo decir la palabra 2 veces, rapido y claro
