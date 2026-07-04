@@ -3,7 +3,32 @@ const User     = require('../models/User');
 const auth     = require('../middleware/auth');
 const mongoose = require('mongoose');
 
-const TRIAL_DAYS = 3;
+const TRIAL_DAYS = 10;
+
+// ── Energía: 1 token se recarga cada 15 min, hasta el máximo ──
+const REFILL_MS = 15 * 60 * 1000;
+function refillEnergy(user) {
+  if (user.isPremium || user.role === 'admin') { user.energyTokens = user.energyMax || 5; return; }
+  const max = user.energyMax || 5;
+  if (user.energyTokens == null) user.energyTokens = max;
+  if (user.energyTokens >= max) { user.energyUpdatedAt = new Date(); return; }
+  const base = user.energyUpdatedAt ? new Date(user.energyUpdatedAt).getTime() : Date.now();
+  const ganados = Math.floor((Date.now() - base) / REFILL_MS);
+  if (ganados > 0) {
+    user.energyTokens = Math.min(max, user.energyTokens + ganados);
+    user.energyUpdatedAt = new Date(base + ganados * REFILL_MS);
+  }
+}
+function energyPayload(user) {
+  const max = user.energyMax || 5;
+  const ilimitado = user.isPremium || user.role === 'admin';
+  let nextMs = 0;
+  if (!ilimitado && user.energyTokens < max) {
+    const base = user.energyUpdatedAt ? new Date(user.energyUpdatedAt).getTime() : Date.now();
+    nextMs = Math.max(0, base + REFILL_MS - Date.now());
+  }
+  return { tokens: ilimitado ? max : user.energyTokens, max, nextMs, ilimitado };
+}
 
 function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() &&
@@ -236,6 +261,88 @@ router.post('/ejemplo', auth, async function(req, res) {
   } catch (err) {
     return res.status(500).json({ msg: err.message });
   }
+});
+
+// ─── GET /api/practice/energy — saldo de tokens ───
+router.get('/energy', auth, async function(req, res) {
+  try {
+    const user = await User.findById(req.user._id);
+    refillEnergy(user); await user.save();
+    return res.json(energyPayload(user));
+  } catch (err) { return res.status(500).json({ msg: err.message }); }
+});
+
+// ─── POST /api/practice/energy/spend — gasta 1 token (al equivocarse) ───
+router.post('/energy/spend', auth, async function(req, res) {
+  try {
+    const user = await User.findById(req.user._id);
+    refillEnergy(user);
+    const ilimitado = user.isPremium || user.role === 'admin';
+    let ok = true;
+    if (!ilimitado) {
+      if (user.energyTokens <= 0) ok = false;
+      else { user.energyTokens -= 1; if (user.energyUpdatedAt == null) user.energyUpdatedAt = new Date(); }
+    }
+    await user.save();
+    return res.json(Object.assign({ ok }, energyPayload(user)));
+  } catch (err) { return res.status(500).json({ msg: err.message }); }
+});
+
+// ─── POST /api/practice/frase — reto "completa la frase" (usar lo aprendido) ───
+// Genera con OpenAI una frase con un hueco {en} + 3 opciones; cacheada por palabra.
+const FraseReto = require('mongoose').models.FraseReto || require('mongoose').model('FraseReto', new (require('mongoose').Schema)({
+  en: { type: String, unique: true }, prompt: String, promptEs: String, opts: [String], ans: Number,
+  explic: String,
+}, { timestamps: true }));
+
+router.post('/frase', auth, async function(req, res) {
+  try {
+    const en = String(req.body.en || '').trim();
+    const es = String(req.body.es || '').trim();
+    if (!en) return res.status(400).json({ msg: 'Falta la palabra' });
+    const cached = await FraseReto.findOne({ en });
+    if (cached) return res.json({ prompt: cached.prompt, promptEs: cached.promptEs, opts: cached.opts, ans: cached.ans, explic: cached.explic });
+
+    const KEY = process.env.OPENAI_API_KEY;
+    let out = null;
+    if (KEY) {
+      try {
+        const r = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini', temperature: 0.4, response_format: { type: 'json_object' },
+            messages: [
+              { role: 'system', content: 'Eres Mr. Alex, profesor de inglés para principiantes. Respondes SOLO JSON válido.' },
+              { role: 'user', content:
+                'Palabra en inglés: "' + en + '" (significa "' + es + '").\n' +
+                'Crea un ejercicio de "completa la frase" para practicar CÓMO USARLA en una conversación real.\n' +
+                'JSON: {"prompt": una frase corta en inglés con un hueco marcado como "___" donde va "' + en + '" (ej: "___, how are you?"), ' +
+                '"promptEs": la traducción de la frase completa al español, ' +
+                '"opts": array de 3 opciones en inglés donde SOLO UNA es "' + en + '" y las otras 2 son distractores plausibles del mismo tipo, ' +
+                '"ans": el índice (0-2) de la opción correcta "' + en + '", ' +
+                '"explic": 1 frase MUY simple en español explicando por qué esa palabra completa la frase}.' },
+            ],
+          }),
+        });
+        if (r.ok) {
+          const d = await r.json();
+          const j = JSON.parse(d.choices[0].message.content);
+          if (j && Array.isArray(j.opts) && j.opts.length === 3 && typeof j.ans === 'number') {
+            out = { prompt: String(j.prompt || '').slice(0, 120), promptEs: String(j.promptEs || '').slice(0, 140), opts: j.opts.map(o => String(o).slice(0, 40)), ans: j.ans, explic: String(j.explic || '').slice(0, 200) };
+          }
+        }
+      } catch (e) {}
+    }
+    if (!out) {
+      // Fallback sin IA
+      const distract = ['Goodbye', 'Please', 'Thanks'].filter(x => x.toLowerCase() !== en.toLowerCase()).slice(0, 2);
+      const opts = [en, distract[0] || 'Please', distract[1] || 'Thanks'];
+      out = { prompt: '___ (' + es + ')', promptEs: 'Completa con la palabra correcta.', opts, ans: 0, explic: '"' + en + '" significa "' + es + '".' };
+    }
+    await FraseReto.create(Object.assign({ en }, out)).catch(() => {});
+    return res.json(out);
+  } catch (err) { return res.status(500).json({ msg: err.message }); }
 });
 
 module.exports = router;

@@ -43,6 +43,11 @@ const userSchema = new mongoose.Schema({
   practiceCount: { type: Number, default: 0 },
   lastActive:    { type: Date },
 
+  // Energía (tokens): cada error en la práctica gasta 1; se recargan con el tiempo
+  energyTokens:    { type: Number, default: 5 },
+  energyMax:       { type: Number, default: 5 },
+  energyUpdatedAt: { type: Date, default: Date.now },
+
   emailVerified:  { type: Boolean, default: false },
   verifyToken:    { type: String },
   verifyTokenExp: { type: Date },

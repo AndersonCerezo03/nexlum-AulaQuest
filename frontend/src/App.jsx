@@ -2489,6 +2489,8 @@ export default function App() {
   const [correct,   setCorrect]   = useState(0);
   const [total,     setTotal]     = useState(0);
   const [totalXP,   setTotalXP]   = useState(0);
+  const [energy,    setEnergy]    = useState({ tokens: 5, max: 5, nextMs: 0, ilimitado: false }); // energía/tokens
+  const [fraseReto, setFraseReto] = useState(null);   // reto "completa la frase"
   const [lvlUp,     setLvlUp]     = useState(false);
   const [showDiag,  setShowDiag]  = useState(false);   // panel de resultados del diagnóstico
   const [tema,      setTema]      = useState(null);
@@ -2754,6 +2756,7 @@ const handleAuth = async(e) => {
     }
     // Precargar los mensajes de corrección (para que la corrección sea inmediata)
     ALEX_CORRECCION.forEach(t => ttsBlob(t, 'es', window._alexToken || token));
+    cargarEnergia();
   };
 
   const closeCloud = () => {
@@ -2772,6 +2775,15 @@ const handleAuth = async(e) => {
       setInterviewReqState(r.ok ? 'sent' : 'error');
     } catch { setInterviewReqState('error'); }
   };
+
+  // ── Energía / tokens ──
+  const cargarEnergia = async () => {
+    try { const r = await fetch(API+'/api/practice/energy',{headers:authH(token)}); if(r.ok) setEnergy(await r.json()); } catch {}
+  };
+  const gastarToken = async () => {
+    try { const r = await fetch(API+'/api/practice/energy/spend',{method:'POST',headers:authH(token)}); const e = await r.json(); setEnergy(e); return e.ilimitado || e.ok; } catch { return true; }
+  };
+  const sinEnergia = () => !energy.ilimitado && energy.tokens <= 0;
 
   const usedWordsRef = useRef([]); // useRef evita problemas de closure stale
   const getWord = () => {
@@ -2827,6 +2839,7 @@ const handleAuth = async(e) => {
 
   const startListen = () => {
     if (!word || listening) return;
+    if (sinEnergia()) { setBubble('⚡ Sin energía. Espera a que se recargue para seguir practicando.'); setBubbleType('err'); return; }
     // Silenciar a Alex al instante que el usuario presiona el botón
     window._alexListening = true;
     if(_currentAudio){_currentAudio.pause();_currentAudio=null;}
@@ -2906,23 +2919,34 @@ const handleAuth = async(e) => {
             setBubbleType('');
           }, 'es');
         } else {
-          // Avanzar rapido — solo celebrar brevemente
-          setBubble('✅ ' + word.en + ' = ' + word.es + ' — Correcto!'); setBubbleType('ok');
-          alexSpeak('Correct.', 0.82, ()=>{
-            setTimeout(()=>getWord(), 400);
-          });
+          // Pronunció bien la palabra → ahora Mr. Alex le pregunta CÓMO USARLA:
+          // reto "completa la frase". Solo avanza si la completa.
+          setBubble('✅ ' + word.en + ' — ¡bien! Ahora, ¿cómo la usas?'); setBubbleType('ok'); setOrbState('speaking');
+          const w = word;
+          fetch(API+'/api/practice/frase',{method:'POST',headers:authH(token),body:JSON.stringify({en:w.en,es:w.es})})
+            .then(r=>r.ok?r.json():null).then(fr=>{
+              if (fr && Array.isArray(fr.opts) && fr.opts.length) {
+                setFraseReto({ ...fr, word: w });
+                setBubble('🧩 Completa la frase con lo que aprendiste.');
+                alexSpeak('Now, how would you use it? Complete the sentence.', 0.9, ()=>setOrbState('idle'), null, ()=>setOrbState('speaking'));
+              } else {
+                alexSpeak('Correct.', 0.82, ()=>{ setOrbState('idle'); setTimeout(()=>getWord(), 300); });
+              }
+            }).catch(()=>{ alexSpeak('Correct.', 0.82, ()=>{ setOrbState('idle'); setTimeout(()=>getWord(), 300); }); });
         }
       } else {
-        // Corrección suave CADA vez que pronuncia mal: Mr. Alex le explica con
-        // calma, modela la palabra DESPACIO (como él) y luego normal, y escucha de nuevo.
+        // Se equivocó al pronunciar → gasta 1 token y Mr. Alex corrige con calma:
+        // le explica, modela la palabra DESPACIO (como él) y luego normal, y escucha de nuevo.
         const tok = window._alexToken || token;
+        const conEnergia = await gastarToken();
         setBubble('🔁 No es así. Escucha: primero despacio, luego normal. ¡Tú puedes!'); setBubbleType('err'); setOrbState('thinking');
         alexSpeak(rand(ALEX_CORRECCION), 0.98, ()=>{
           setBubble('🐢 ' + word.en + ' — despacio…');
           alexSpeakSlow(word.en, tok, ()=>{
             setBubble('🔊 ' + word.en + ' — ahora normal');
             alexSpeak(word.en, 0.85, ()=>{
-              setOrbState('listening'); setBubble('🎤 Otra vez, suave: ' + word.en + ' (' + word.es + ')'); setBubbleType('');
+              if (!conEnergia) { setOrbState('idle'); setBubble('⚡ Te quedaste sin energía. Espera a que se recargue para seguir practicando.'); setBubbleType('err'); }
+              else { setOrbState('listening'); setBubble('🎤 Otra vez, suave: ' + word.en + ' (' + word.es + ')'); setBubbleType(''); }
             }, null, ()=>setOrbState('speaking'));
           });
         }, 'es', ()=>setOrbState('speaking'));
@@ -3678,16 +3702,17 @@ const handleAuth = async(e) => {
 
       </div>
 
-      <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(2,6,23,.85)',opacity:cloudOpen?1:0,pointerEvents:cloudOpen?'all':'none',transition:'opacity .3s',display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem'}}>
-        <div style={{background:'#0a0f1e',borderRadius:20,border:'1px solid rgba(99,102,241,.3)',padding:'1.8rem 2rem',width:'100%',maxWidth:'min(600px, 95vw)',transform:cloudOpen?'translateY(0)':'translateY(30px)',transition:'transform .4s cubic-bezier(.22,.61,.36,1)',position:'relative',boxShadow:'0 0 60px rgba(99,102,241,.25)'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
+      <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(2,6,23,.85)',opacity:cloudOpen?1:0,pointerEvents:cloudOpen?'all':'none',transition:'opacity .3s',display:'flex',alignItems:'center',justifyContent:'center',padding:'12px'}}>
+        <div style={{background:'#0a0f1e',borderRadius:20,border:'1px solid rgba(99,102,241,.3)',padding:'clamp(1rem,4vw,1.8rem) clamp(.9rem,4vw,1.8rem)',width:'100%',maxWidth:'min(600px, 96vw)',maxHeight:'92vh',overflowY:'auto',boxSizing:'border-box',transform:cloudOpen?'translateY(0)':'translateY(30px)',transition:'transform .4s cubic-bezier(.22,.61,.36,1)',position:'relative',boxShadow:'0 0 60px rgba(99,102,241,.25)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.2rem',flexWrap:'wrap',gap:8}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
               <span style={{fontSize:'.8rem',fontWeight:700,color:'#6366f1',letterSpacing:'.08em'}}>MR. ALEX</span>
               {tema&&<span style={{background:'rgba(99,102,241,.15)',color:'#a5b4fc',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>{tema.name}</span>}
               <span style={{background:'rgba(16,185,129,.15)',color:'#10b981',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>EN VIVO</span>
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
               {correct>=3&&<span style={{fontSize:'.75rem',fontWeight:700,color:'#f59e0b'}}>Racha {correct}</span>}
+              {!energy.ilimitado && <span title="Energía: pierdes 1 token al equivocarte" style={{fontSize:'.72rem',fontWeight:700,color: energy.tokens<=1?'#ef4444':'#f59e0b',whiteSpace:'nowrap'}}>⚡ {energy.tokens}/{energy.max}</span>}
               <span style={{fontSize:'.72rem',color:'#64748b'}}>{totalXP} XP</span>
               <button onClick={closeCloud} style={{background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#ef4444',width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:12}}>✕</button>
             </div>
@@ -3746,12 +3771,42 @@ const handleAuth = async(e) => {
             <div style={{background:'#020617',border:'1px dashed rgba(99,102,241,.2)',borderRadius:14,padding:'1.5rem',textAlign:'center',marginBottom:'1rem',color:'#334155',fontSize:'.85rem'}}>Toca "Nueva palabra" para comenzar</div>
           )}
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-            <button onClick={getWord} style={{border:'none',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.82rem',cursor:'pointer',background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff'}}>Nueva palabra</button>
-            <button onClick={startListen} disabled={!word||listening}
-              style={{border:'none',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.82rem',cursor:(!word||listening)?'not-allowed':'pointer',background:listening?'#eab308':'#10b981',color:listening?'#0f172a':'#fff',opacity:!word?0.4:1,animation:listening?'pulseBtn 1s ease-in-out infinite':'none'}}>
+            <button onClick={()=>{ if(sinEnergia()){ setBubble('⚡ Sin energía. Espera a que se recargue para seguir.'); setBubbleType('err'); return; } getWord(); }} disabled={!!fraseReto} style={{border:'none',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.82rem',cursor:fraseReto?'not-allowed':'pointer',background: sinEnergia()?'#334155':'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',opacity:fraseReto?0.5:1}}>Nueva palabra</button>
+            <button onClick={startListen} disabled={!word||listening||!!fraseReto||sinEnergia()}
+              style={{border:'none',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.82rem',cursor:(!word||listening||fraseReto||sinEnergia())?'not-allowed':'pointer',background:listening?'#eab308':sinEnergia()?'#334155':'#10b981',color:listening?'#0f172a':'#fff',opacity:(!word||fraseReto||sinEnergia())?0.5:1,animation:listening?'pulseBtn 1s ease-in-out infinite':'none'}}>
               {listening?'Escuchando...':'Pronunciar'}
             </button>
           </div>
+
+          {/* Reto: completa la frase (usar lo aprendido). Gasta token al fallar. */}
+          {fraseReto && (
+            <div style={{marginTop:'1rem',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.3)',borderRadius:14,padding:'1rem'}}>
+              <div style={{fontSize:'.62rem',fontWeight:800,color:'#c4b5fd',letterSpacing:'.06em',marginBottom:6}}>🧩 COMPLETA LA FRASE — ¿cómo la usas?</div>
+              <div style={{fontSize:'1rem',fontWeight:700,color:'#e2e8f0',textAlign:'center',margin:'6px 0'}}>{fraseReto.prompt}</div>
+              {fraseReto.promptEs && <div style={{fontSize:'.72rem',color:'#64748b',textAlign:'center',marginBottom:8}}>{fraseReto.promptEs}</div>}
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                {fraseReto.opts.map((o,i)=>(
+                  <button key={i} onClick={async()=>{
+                    if (i === fraseReto.ans) {
+                      const w = fraseReto.word; setFraseReto(null);
+                      setBubble('✅ ¡Muy bien! Así se usa "'+w.en+'".'); setBubbleType('ok'); setOrbState('speaking');
+                      alexSpeak('Excellent! That is how you use it.', 0.9, ()=>{ setOrbState('idle'); setTimeout(()=>getWord(), 300); }, null, ()=>setOrbState('speaking'));
+                    } else {
+                      const conEnergia = await gastarToken();
+                      setOrbState('speaking'); setBubble('🔁 Casi. Escucha con calma por qué no es esa.'); setBubbleType('err');
+                      alexSpeak('Not quite. Let me explain, stay calm.', 0.92, ()=>{
+                        if (fraseReto && fraseReto.explic) alexSpeak(fraseReto.explic, 0.98, ()=>{
+                          if (!conEnergia) { setFraseReto(null); setOrbState('idle'); setBubble('⚡ Te quedaste sin energía. Espera la recarga para seguir.'); setBubbleType('err'); }
+                          else { setOrbState('idle'); setBubble('🧩 Inténtalo otra vez: completa la frase.'); }
+                        }, 'es', ()=>setOrbState('speaking'));
+                        else { setOrbState('idle'); if(!conEnergia){ setFraseReto(null); setBubble('⚡ Sin energía. Espera la recarga para seguir.'); } }
+                      }, null, ()=>setOrbState('speaking'));
+                    }
+                  }} style={{border:'1px solid rgba(139,92,246,.35)',background:'rgba(20,15,40,.6)',color:'#e2e8f0',padding:'11px 14px',borderRadius:10,fontWeight:600,fontSize:'.85rem',cursor:'pointer',textAlign:'left'}}>{o}</button>
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{marginTop:'1rem'}}>
             <div style={{display:'flex',justifyContent:'space-between',fontSize:'.65rem',color:'#475569',marginBottom:4}}>
               <span>Progreso sesion</span><span>{correct}/{total} correctas</span>
