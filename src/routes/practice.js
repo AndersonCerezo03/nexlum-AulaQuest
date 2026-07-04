@@ -278,6 +278,37 @@ router.post('/ejemplo', auth, async function(req, res) {
   }
 });
 
+// ─── PUT /api/practice/perfil — el alumno edita su propio perfil ───
+router.put('/perfil', auth, async function(req, res) {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ msg: 'Usuario no encontrado' });
+    if (typeof req.body.name === 'string') {
+      const n = req.body.name.trim();
+      if (n.length < 2 || n.length > 60) return res.status(400).json({ msg: 'El nombre debe tener entre 2 y 60 caracteres' });
+      user.name = n;
+    }
+    if (typeof req.body.email === 'string' && req.body.email.trim()) {
+      const e = req.body.email.toLowerCase().trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) return res.status(400).json({ msg: 'Correo inválido' });
+      if (user.role === 'admin' && e !== user.email) return res.status(400).json({ msg: 'La cuenta de administrador no puede cambiar su correo' });
+      const dup = await User.findOne({ email: e, _id: { $ne: user._id } });
+      if (dup) return res.status(400).json({ msg: 'Ese correo ya está en uso por otra cuenta' });
+      user.email = e;
+    }
+    // Cambio de contraseña opcional (requiere la actual)
+    if (req.body.newPassword) {
+      const np = String(req.body.newPassword);
+      if (np.length < 8) return res.status(400).json({ msg: 'La nueva contraseña necesita al menos 8 caracteres' });
+      const ok = await user.matchPassword(String(req.body.currentPassword || ''));
+      if (!ok) return res.status(400).json({ msg: 'La contraseña actual no es correcta' });
+      user.password = np;
+    }
+    await user.save();
+    return res.json({ ok: true, user });
+  } catch (err) { return res.status(400).json({ msg: err.message }); }
+});
+
 // ─── GET /api/practice/energy — saldo de tokens ───
 router.get('/energy', auth, async function(req, res) {
   try {

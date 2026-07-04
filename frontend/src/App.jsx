@@ -470,7 +470,7 @@ function Home({ onEmpezar, user, onLogout, onAdmin }) {
     <div style={{background:'#020617',minHeight:'100vh',fontFamily:"'Poppins',sans-serif",color:'#e2e8f0',overflowX:'hidden'}}>
       <style>{KF}</style>
       <canvas ref={canvasRef} style={{position:'fixed',inset:0,pointerEvents:'none',zIndex:0}}/>
-      <nav style={{position:'fixed',top:0,left:0,width:'100%',zIndex:1000,height:62,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 2rem',background:'linear-gradient(180deg, rgba(17,20,34,.55), rgba(17,20,34,.26))',backdropFilter:'blur(24px) saturate(1.7)',WebkitBackdropFilter:'blur(24px) saturate(1.7)',borderBottom:'1px solid rgba(139,92,246,.22)',boxShadow:'0 10px 34px -12px rgba(88,28,135,.45)'}}>
+      <nav style={{position:'fixed',top:0,left:0,width:'100%',zIndex:1000,height:62,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 2rem',background:'rgba(10,14,26,.45)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <div style={{width:36,height:36,background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1rem'}}>🎓</div>
           <span style={{fontWeight:700,fontSize:'1.15rem',background:'linear-gradient(135deg,#6366f1,#8b5cf6)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>AulaQuest</span>
@@ -2569,6 +2569,26 @@ export default function App() {
   const [screen2,   setScreen2]   = useState('');
   const [adminVistaNivel, setAdminVistaNivel] = useState(null); // admin: ver aula de cualquier nivel
   const [nivelMenu, setNivelMenu] = useState(false);
+  const [userMenu2,  setUserMenu2]  = useState(false);   // menú de usuario en el aula
+  const [showPerfil2,setShowPerfil2] = useState(false);   // modal de perfil (ver/editar)
+  const [perfilForm, setPerfilForm] = useState({ name:'', email:'', currentPassword:'', newPassword:'' });
+  const [perfilMsg,  setPerfilMsg]  = useState({ tipo:'', txt:'' });
+  const [perfilSaving,setPerfilSaving] = useState(false);
+  const inic = (n) => (n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const NIVEL_NOMBRE = { A1:'Principiante', A2:'Elemental', B1:'Intermedio', B2:'Intermedio alto', C1:'Avanzado', C2:'Maestría' };
+  const abrirPerfil = () => { setPerfilForm({ name:user?.name||'', email:user?.email||'', currentPassword:'', newPassword:'' }); setPerfilMsg({tipo:'',txt:''}); setShowPerfil2(true); setUserMenu2(false); };
+  const guardarPerfil = async () => {
+    setPerfilSaving(true); setPerfilMsg({tipo:'',txt:''});
+    try {
+      const body = { name: perfilForm.name, email: perfilForm.email };
+      if (perfilForm.newPassword) { body.newPassword = perfilForm.newPassword; body.currentPassword = perfilForm.currentPassword; }
+      const r = await fetch(API+'/api/practice/perfil', { method:'PUT', headers: authH(token), body: JSON.stringify(body) });
+      const d = await r.json();
+      if (r.ok && d.user) { setUser(d.user); setPerfilMsg({tipo:'ok',txt:'✅ Perfil actualizado'}); setPerfilForm(f=>({...f,currentPassword:'',newPassword:''})); }
+      else setPerfilMsg({tipo:'err',txt:'❌ '+(d.msg||'No se pudo guardar')});
+    } catch { setPerfilMsg({tipo:'err',txt:'❌ Error de conexión'}); }
+    setPerfilSaving(false);
+  };
 
   const esAdmin = user?.role === 'admin';
   const interviewLocked = !esAdmin && !(user?.interviewUnlocked); // entrevistas bloqueadas hasta que el admin las habilite
@@ -3346,18 +3366,80 @@ const handleAuth = async(e) => {
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <div style={{background:'rgba(16,185,129,.15)',border:'1px solid rgba(16,185,129,.35)',color:'#10b981',padding:'3px 10px',borderRadius:50,fontSize:'.7rem',fontWeight:700}}>{nivel}</div>
-          <div style={{display:'flex',alignItems:'center',gap:6,background:'rgba(99,102,241,.08)',border:'1px solid rgba(99,102,241,.2)',padding:'4px 10px 4px 4px',borderRadius:50}}>
-            <div style={{width:26,height:26,borderRadius:'50%',background:'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.65rem',fontWeight:700,color:'#fff'}}>
-              {(user?.username||user?.name||'AC').substring(0,2).toUpperCase()}
+          <div style={{position:'relative'}}>
+            <div onClick={()=>setUserMenu2(o=>!o)}
+              style={{display:'flex',alignItems:'center',gap:6,background:userMenu2?'rgba(139,92,246,.16)':'rgba(99,102,241,.08)',border:'1px solid '+(userMenu2?'rgba(139,92,246,.5)':'rgba(99,102,241,.2)'),padding:'4px 10px 4px 4px',borderRadius:50,cursor:'pointer',transition:'all .2s'}}>
+              <div style={{width:26,height:26,borderRadius:'50%',background:'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.65rem',fontWeight:700,color:'#fff'}}>
+                {inic(user?.name)}
+              </div>
+              <div>
+                <div style={{fontSize:'.75rem',fontWeight:600,color:'#e2e8f0'}}>{(user?.name||'').split(' ')[0]}</div>
+                <div style={{fontSize:'.62rem',color:'#64748b'}}>{xp} XP</div>
+              </div>
+              <span style={{fontSize:'.55rem',color:'#a5b4fc',marginLeft:2}}>{userMenu2?'▲':'▼'}</span>
             </div>
-            <div>
-              <div style={{fontSize:'.75rem',fontWeight:600,color:'#e2e8f0'}}>{(user?.username||user?.name||'').split(' ')[0]}</div>
-              <div style={{fontSize:'.62rem',color:'#64748b'}}>{xp} XP</div>
-            </div>
+            {userMenu2 && <div onClick={()=>setUserMenu2(false)} style={{position:'fixed',inset:0,zIndex:1999}}/>}
+            {userMenu2 && (
+              <div style={{position:'absolute',top:'calc(100% + 12px)',right:0,minWidth:270,background:'rgba(13,17,28,.98)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',border:'1px solid rgba(139,92,246,.3)',borderRadius:16,padding:10,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.7), 0 0 0 1px rgba(139,92,246,.08)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:11,padding:'6px 8px 12px'}}>
+                  <div style={{width:46,height:46,borderRadius:'50%',background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:'1rem',color:'#fff',flexShrink:0}}>{inic(user?.name)}</div>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:'.92rem',fontWeight:700,color:'#e2e8f0',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user?.name}</div>
+                    <div style={{fontSize:'.68rem',color:'#64748b',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user?.email}</div>
+                  </div>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:9,background:'rgba(99,102,241,.12)',border:'1px solid rgba(99,102,241,.3)',borderRadius:11,padding:'8px 11px',marginBottom:8}}>
+                  <span style={{fontSize:'1rem'}}>{esAdmin?'🛡️':'🎓'}</span>
+                  <div><div style={{fontSize:'.64rem',color:'#64748b'}}>{esAdmin?'Rol':'Tu aula'}</div><div style={{fontSize:'.82rem',fontWeight:700,color:'#a5b4fc'}}>{esAdmin?'Administrador':(user?.englishLevel+' — '+(NIVEL_NOMBRE[user?.englishLevel]||''))}</div></div>
+                </div>
+                <MenuItem icon="👤" label="Ver / editar mi perfil" onClick={abrirPerfil}/>
+                {esAdmin && <MenuItem icon="🛡️" label="Panel de administrador" onClick={()=>{ setUserMenu2(false); setScreen2('admin'); }}/>}
+                <div style={{height:1,background:'rgba(255,255,255,.07)',margin:'6px 6px'}}/>
+                <MenuItem icon="🚪" label="Cerrar sesión" danger onClick={()=>{ setUserMenu2(false); logout(); }}/>
+              </div>
+            )}
           </div>
-          <button onClick={logout} style={{background:'transparent',border:'1px solid rgba(239,68,68,.3)',color:'#ef4444',padding:'5px 12px',borderRadius:8,cursor:'pointer',fontSize:'.75rem',fontWeight:600}}>Salir</button>
         </div>
       </div>
+
+      {showPerfil2 && (
+        <div onClick={()=>setShowPerfil2(false)} style={{position:'fixed',inset:0,zIndex:3000,background:'rgba(2,6,23,.82)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto'}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:440,background:'linear-gradient(180deg,rgba(20,24,40,.99),rgba(13,17,28,.99))',border:'1px solid rgba(139,92,246,.3)',borderRadius:22,padding:'1.6rem',boxShadow:'0 30px 80px rgba(0,0,0,.7)',position:'relative',maxHeight:'92vh',overflowY:'auto',boxSizing:'border-box'}}>
+            <button onClick={()=>setShowPerfil2(false)} style={{position:'absolute',top:14,right:14,background:'none',border:'none',color:'#64748b',fontSize:'1.1rem',cursor:'pointer'}}>✕</button>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',marginBottom:16}}>
+              <div style={{width:76,height:76,borderRadius:'50%',background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:'1.7rem',color:'#fff',boxShadow:'0 8px 24px rgba(139,92,246,.4)'}}>{inic(user?.name)}</div>
+              <div style={{fontSize:'1.2rem',fontWeight:800,color:'#f1f5f9',marginTop:12}}>{user?.name}</div>
+              <div style={{marginTop:6,display:'inline-flex',alignItems:'center',gap:6,background:'rgba(99,102,241,.14)',border:'1px solid rgba(99,102,241,.4)',color:'#a5b4fc',fontSize:'.72rem',fontWeight:700,padding:'4px 12px',borderRadius:50}}>{esAdmin?'🛡️ Administrador':('🎓 Aula '+user?.englishLevel+' — '+(NIVEL_NOMBRE[user?.englishLevel]||''))}</div>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
+              {[['⭐',(user?.experiencePoints||0)+' XP','Experiencia'],['🗣️',(user?.wordsCorrect||0),'Palabras correctas'],['🏆',(user?.nivelesAprobados||[]).length,'Niveles aprobados'],['📅',user?.createdAt?new Date(user.createdAt).toLocaleDateString('es-CO',{month:'short',year:'numeric'}):'—','Miembro desde']].map(([ic,val,lbl])=>(
+                <div key={lbl} style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(139,92,246,.15)',borderRadius:12,padding:'12px'}}>
+                  <div style={{fontSize:'1.05rem'}}>{ic}</div>
+                  <div style={{fontSize:'1.02rem',fontWeight:800,color:'#e2e8f0',marginTop:2}}>{val}</div>
+                  <div style={{fontSize:'.64rem',color:'#64748b'}}>{lbl}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{fontSize:'.7rem',fontWeight:800,color:'#a5b4fc',letterSpacing:'.05em',marginBottom:10}}>✏️ EDITAR MI INFORMACIÓN</div>
+            {[['Nombre completo','name','text','Tu nombre'],['Correo electrónico','email','email','tucorreo@ejemplo.com']].map(([lbl,key,type,ph])=>(
+              <div key={key} style={{marginBottom:10}}>
+                <label style={{fontSize:'.68rem',color:'#64748b',display:'block',marginBottom:4}}>{lbl}</label>
+                <input type={type} value={perfilForm[key]} onChange={e=>setPerfilForm(f=>({...f,[key]:e.target.value}))} placeholder={ph} disabled={esAdmin&&key==='email'}
+                  style={{width:'100%',boxSizing:'border-box',background:'#0a0e1a',border:'1px solid rgba(139,92,246,.3)',borderRadius:10,color:'#e2e8f0',padding:'10px 12px',fontSize:'.85rem',outline:'none',opacity:(esAdmin&&key==='email')?0.5:1}}/>
+              </div>
+            ))}
+            <div style={{fontSize:'.66rem',color:'#475569',margin:'12px 0 8px'}}>Cambiar contraseña (opcional)</div>
+            {[['Contraseña actual','currentPassword','Solo si vas a cambiarla'],['Nueva contraseña','newPassword','Mínimo 8 caracteres']].map(([lbl,key,ph])=>(
+              <div key={key} style={{marginBottom:10}}>
+                <input type="password" value={perfilForm[key]} onChange={e=>setPerfilForm(f=>({...f,[key]:e.target.value}))} placeholder={ph}
+                  style={{width:'100%',boxSizing:'border-box',background:'#0a0e1a',border:'1px solid rgba(139,92,246,.2)',borderRadius:10,color:'#e2e8f0',padding:'10px 12px',fontSize:'.85rem',outline:'none'}}/>
+              </div>
+            ))}
+            {perfilMsg.txt && <div style={{fontSize:'.78rem',fontWeight:600,color:perfilMsg.tipo==='ok'?'#34d399':'#f87171',margin:'6px 0 10px'}}>{perfilMsg.txt}</div>}
+            <button onClick={guardarPerfil} disabled={perfilSaving} style={{width:'100%',background:perfilSaving?'#334155':'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.9rem',cursor:perfilSaving?'default':'pointer',marginTop:4}}>{perfilSaving?'Guardando…':'💾 Guardar cambios'}</button>
+          </div>
+        </div>
+      )}
 
       <div style={{padding:'1.2rem 1.5rem',transition:'filter .4s,opacity .4s',filter:cloudOpen?'blur(3px)':'none',opacity:cloudOpen?0.35:1,pointerEvents:cloudOpen?'none':'all'}}>
         <div style={{fontSize:'.7rem',color:'#475569',marginBottom:'.6rem'}}>Cursos / <span style={{color:'#6366f1'}}>Ingles {nivel}</span></div>
