@@ -3850,8 +3850,24 @@ const handleAuth = async(e) => {
         </div>
         </div>
 
-        {/* ── Material de apoyo (PDFs) ─────────────────────────────────── */}
-        {nivel === 'A1' && (
+        {/* ── Material de apoyo (PDFs) — en todas las aulas ────────────── */}
+        {(()=>{
+          const MAT = {
+            A1: [
+              { ic:'📘', t:'Guía de gramática A1',   d:'Verb to be, presente, artículos', url:'/material/AulaQuest_Guia_Gramatica_A1.pdf' },
+              { ic:'📋', t:'Vocabulario A1 completo', d:'Todas las palabras con traducción', url:'/material/AulaQuest_Vocabulario_A1_Completo.pdf' },
+              { ic:'✏️', t:'Hojas de ejercicios',     d:'Práctica imprimible por tema', url:'/material/AulaQuest_Hojas_de_Ejercicios_A1.pdf' },
+              { ic:'🔊', t:'Guía de pronunciación',   d:'Sonidos del inglés con audio', url:'/material/AulaQuest_Guia_Pronunciacion.pdf' },
+            ],
+          };
+          const cards = MAT[nivel] || [
+            { ic:'📘', t:'Guía de gramática '+nivel,     d:'Reglas clave del nivel '+nivel, url:'' },
+            { ic:'📋', t:'Vocabulario '+nivel+' completo', d:'Todas las palabras con traducción', url:'' },
+            { ic:'✏️', t:'Hojas de ejercicios',          d:'Práctica imprimible por tema', url:'' },
+            { ic:'🔊', t:'Guía de pronunciación',        d:'Sonidos del inglés', url:'' },
+          ];
+          const hayPdf = cards.some(c=>c.url);
+          return (
         <div style={{marginTop:'1rem'}}>
           <button onClick={()=>setShowMaterial(!showMaterial)}
             style={{width:'100%',display:'flex',alignItems:'center',gap:14,background:'linear-gradient(135deg,rgba(99,102,241,.16),rgba(139,92,246,.1))',border:'1px solid rgba(139,92,246,.4)',borderRadius:16,padding:'14px 18px',cursor:'pointer',fontFamily:"'Poppins',sans-serif",textAlign:'left',transition:'background .2s,border-color .2s'}}
@@ -3860,18 +3876,13 @@ const handleAuth = async(e) => {
             <div style={{width:46,height:46,borderRadius:13,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.4rem',flexShrink:0,boxShadow:'0 4px 16px rgba(99,102,241,.4)'}}>📚</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:'.95rem',fontWeight:700,color:'#e2e8f0'}}>Material de apoyo</div>
-              <div style={{fontSize:'.72rem',color:'#94a3b8',marginTop:2}}>4 recursos descargables · guías y ejercicios en PDF</div>
+              <div style={{fontSize:'.72rem',color:'#94a3b8',marginTop:2}}>{hayPdf ? '4 recursos descargables · guías y ejercicios en PDF' : 'Próximamente · guías y ejercicios en PDF'}</div>
             </div>
             <span style={{fontSize:'1.1rem',color:'#a5b4fc',flexShrink:0}}>{showMaterial?'▴':'▾'}</span>
           </button>
           {showMaterial && (
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:12}}>
-              {[
-                { ic:'📘', t:'Guía de gramática A1',   d:'Verb to be, presente, artículos', url:'/material/AulaQuest_Guia_Gramatica_A1.pdf' },
-                { ic:'📋', t:'Vocabulario A1 completo', d:'Todas las palabras con traducción', url:'/material/AulaQuest_Vocabulario_A1_Completo.pdf' },
-                { ic:'✏️', t:'Hojas de ejercicios',     d:'Práctica imprimible por tema', url:'/material/AulaQuest_Hojas_de_Ejercicios_A1.pdf' },
-                { ic:'🔊', t:'Guía de pronunciación',   d:'Sonidos del inglés con audio', url:'/material/AulaQuest_Guia_Pronunciacion.pdf' },
-              ].map((m,i)=>(
+              {cards.map((m,i)=>(
                 <a key={i} href={m.url||undefined} target="_blank" rel="noopener noreferrer" download
                   style={{display:'block',textDecoration:'none',background:'#172033',border:'1px solid rgba(99,102,241,.18)',borderRadius:12,padding:14,cursor:m.url?'pointer':'default',opacity:m.url?1:0.85}}>
                   <div style={{fontSize:'1.6rem',lineHeight:1}}>{m.ic}</div>
@@ -3883,7 +3894,8 @@ const handleAuth = async(e) => {
             </div>
           )}
         </div>
-        )}
+          );
+        })()}
 
       </div>
 
