@@ -2491,6 +2491,7 @@ export default function App() {
   const [totalXP,   setTotalXP]   = useState(0);
   const [energy,    setEnergy]    = useState({ tokens: 5, max: 5, nextMs: 0, ilimitado: false }); // energía/tokens
   const [fraseReto, setFraseReto] = useState(null);   // reto "completa la frase"
+  const [temaEjemplos, setTemaEjemplos] = useState([]); // frases de ejemplo del tema abierto
   const [lvlUp,     setLvlUp]     = useState(false);
   const [showDiag,  setShowDiag]  = useState(false);   // panel de resultados del diagnóstico
   const [tema,      setTema]      = useState(null);
@@ -2687,6 +2688,19 @@ const handleAuth = async(e) => {
     window.addEventListener('resize', onR);
     return () => window.removeEventListener('resize', onR);
   }, []);
+
+  // Frases de ejemplo del tema abierto (cómo usar lo aprendido) — desde la BD
+  useEffect(()=>{
+    if (!tema) { setTemaEjemplos([]); return; }
+    const words = (vocabData[tema.id] || []).map(w => w.en);
+    if (!words.length || !token) { setTemaEjemplos([]); return; }
+    let vivo = true;
+    fetch(API+'/api/practice/ejemplos', { method:'POST', headers: authH(token), body: JSON.stringify({ words }) })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (vivo) setTemaEjemplos(d && d.ejemplos ? d.ejemplos : []); })
+      .catch(() => { if (vivo) setTemaEjemplos([]); });
+    return () => { vivo = false; };
+  }, [tema, vocabData, token]);
 
   useEffect(()=>{
     if (!token) return;
@@ -3421,6 +3435,24 @@ const handleAuth = async(e) => {
               );
               })}
             </div>
+            {temaEjemplos.length > 0 && (
+              <div style={{background:'rgba(99,102,241,.06)',border:'1px solid rgba(99,102,241,.2)',borderRadius:10,padding:'.8rem',marginBottom:'.8rem'}}>
+                <div style={{fontSize:'.72rem',fontWeight:800,color:'#a5b4fc',letterSpacing:'.04em',marginBottom:8}}>💬 CÓMO USAR LO APRENDIDO — {temaEjemplos.length} frases de ejemplo</div>
+                <div style={{display:'flex',flexDirection:'column',gap:9,maxHeight:240,overflowY:'auto'}}>
+                  {temaEjemplos.map((ej,i)=>(
+                    <div key={i} style={{borderLeft:'2px solid rgba(99,102,241,.4)',paddingLeft:10}}>
+                      <div style={{fontSize:'.62rem',color:'#6366f1',fontWeight:700}}>{ej.en}</div>
+                      <div style={{fontSize:'.8rem',color:'#e2e8f0',fontWeight:600}}>
+                        {ej.frase}
+                        <button onClick={()=>alexSpeak(ej.frase,0.88)} title="Escuchar" style={{background:'none',border:'none',cursor:'pointer',fontSize:'.82rem',marginLeft:5}}>🔊</button>
+                      </div>
+                      <div style={{fontSize:'.68rem',color:'#64748b'}}>{ej.fraseEs}</div>
+                      {ej.explicacion && <div style={{fontSize:'.66rem',color:'#f59e0b',marginTop:2}}>📘 {ej.explicacion}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div style={{background:'rgba(245,158,11,.08)',border:'1px solid rgba(245,158,11,.25)',borderRadius:10,padding:'.8rem',marginBottom:'.8rem'}}>
               <div style={{fontSize:'.72rem',fontWeight:700,color:'#f59e0b',marginBottom:2}}>RETO DEL TEMA</div>
               <div style={{fontSize:'.78rem',color:'#e2e8f0'}}>Pronuncia correctamente <strong>{(vocabData[tema.id]||[]).length} palabras</strong> de {tema.name}</div>

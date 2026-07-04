@@ -80,8 +80,16 @@ async function run() {
     let done = 0, gen = 0;
     await pool(words, 8, async (w) => {
       const [hasE, hasF] = await Promise.all([EjemploPalabra.findOne({ en: w.en }).lean(), FraseReto.findOne({ en: w.en }).lean()]);
-      if (!hasE) { const e = await genEjemplo(w.en, w.es); if (e) { await EjemploPalabra.create(Object.assign({ en: w.en, es: w.es }, e)).catch(() => {}); gen++; } }
-      if (!hasF) { const f = await genFrase(w.en, w.es); if (f) { await FraseReto.create(Object.assign({ en: w.en }, f)).catch(() => {}); gen++; } }
+      if (!hasE) {
+        let e = await genEjemplo(w.en, w.es);
+        if (!e) e = { frase: 'I use "' + w.en + '" in English.', fraseEs: 'Uso "' + w.en + '" (' + w.es + ') en inglés.', explicacion: '"' + w.en + '" significa "' + w.es + '". Úsala en tus frases y conversaciones.' };
+        await EjemploPalabra.create(Object.assign({ en: w.en, es: w.es }, e)).catch(() => {}); gen++;
+      }
+      if (!hasF) {
+        let f = await genFrase(w.en, w.es);
+        if (!f) { const d = ['Yes', 'No', 'Please', 'Thanks'].filter(x => x.toLowerCase() !== w.en.toLowerCase()); f = { prompt: '___ (' + w.es + ')', promptEs: 'Completa con la palabra correcta.', opts: [w.en, d[0], d[1]], ans: 0, explic: '"' + w.en + '" significa "' + w.es + '".' }; }
+        await FraseReto.create(Object.assign({ en: w.en }, f)).catch(() => {}); gen++;
+      }
       done++;
       if (done % 25 === 0) console.log('  ' + nivel + ': ' + done + '/' + words.length);
     });

@@ -209,6 +209,21 @@ router.post('/ultimo-tema', auth, async function(req, res) {
 // OpenAI y queda cacheada en Mongo (las siguientes veces no cuesta nada).
 const EjemploPalabra = require('../models/EjemploPalabra');
 
+// ─── POST /api/practice/ejemplos — frases de ejemplo de TODAS las palabras de un tema ───
+// Devuelve, desde la BD, la oración de ejemplo + traducción + explicación de cada
+// palabra, para mostrarlas en el aula (cómo usar lo aprendido).
+router.post('/ejemplos', auth, async function(req, res) {
+  try {
+    const words = Array.isArray(req.body.words) ? req.body.words.map(w => String(w).trim()).filter(Boolean).slice(0, 60) : [];
+    if (!words.length) return res.json({ ejemplos: [] });
+    const docs = await EjemploPalabra.find({ en: { $in: words } }).lean();
+    const map = {};
+    docs.forEach(d => { map[d.en] = { en: d.en, es: d.es, frase: d.frase, fraseEs: d.fraseEs, explicacion: d.explicacion }; });
+    const ejemplos = words.map(w => map[w]).filter(Boolean);
+    return res.json({ ejemplos });
+  } catch (err) { return res.status(500).json({ msg: err.message }); }
+});
+
 router.post('/ejemplo', auth, async function(req, res) {
   try {
     const en = String(req.body.en || '').trim();
