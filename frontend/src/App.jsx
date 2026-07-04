@@ -3867,12 +3867,12 @@ const handleAuth = async(e) => {
           {showMaterial && (
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:12}}>
               {[
-                { ic:'📘', t:'Guía de gramática A1',   d:'Verb to be, presente, artículos', url:'' },
-                { ic:'📋', t:'Vocabulario A1 completo', d:'Todas las palabras con traducción', url:'' },
-                { ic:'✏️', t:'Hojas de ejercicios',     d:'Práctica imprimible por tema', url:'' },
-                { ic:'🔊', t:'Guía de pronunciación',   d:'Sonidos del inglés con audio', url:'' },
+                { ic:'📘', t:'Guía de gramática A1',   d:'Verb to be, presente, artículos', url:'/material/AulaQuest_Guia_Gramatica_A1.pdf' },
+                { ic:'📋', t:'Vocabulario A1 completo', d:'Todas las palabras con traducción', url:'/material/AulaQuest_Vocabulario_A1_Completo.pdf' },
+                { ic:'✏️', t:'Hojas de ejercicios',     d:'Práctica imprimible por tema', url:'/material/AulaQuest_Hojas_de_Ejercicios_A1.pdf' },
+                { ic:'🔊', t:'Guía de pronunciación',   d:'Sonidos del inglés con audio', url:'/material/AulaQuest_Guia_Pronunciacion.pdf' },
               ].map((m,i)=>(
-                <a key={i} href={m.url||undefined} target="_blank" rel="noopener noreferrer"
+                <a key={i} href={m.url||undefined} target="_blank" rel="noopener noreferrer" download
                   style={{display:'block',textDecoration:'none',background:'#172033',border:'1px solid rgba(99,102,241,.18)',borderRadius:12,padding:14,cursor:m.url?'pointer':'default',opacity:m.url?1:0.85}}>
                   <div style={{fontSize:'1.6rem',lineHeight:1}}>{m.ic}</div>
                   <div style={{color:'#e2e8f0',fontSize:'.78rem',fontWeight:600,marginTop:8}}>{m.t}</div>
