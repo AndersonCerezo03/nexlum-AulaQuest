@@ -3,6 +3,7 @@ import ArenaGame from './Arena.jsx';
 import CityGame from './City.jsx';
 import FilesGame from './Files.jsx';
 import RoyaleGame from './Royale.jsx';
+import GrimoireGame from './Grimoire.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'https://nexlum-aulaquest.onrender.com';
 const authH = (t) => ({ 'Content-Type':'application/json', 'Authorization':'Bearer '+t });
@@ -1723,101 +1724,6 @@ function AdminPanel({ token, user, onBack, onVerNivel }) {
   );
 }
 
-function SharkTankGame({ onBack }) {
-  const PRODUCTS = [
-    "An AI-powered smart pillow that wakes you up by gently slapping your face when you oversleep.",
-    "A subscription app that uses drones to deliver hot espresso directly to your office window while you work.",
-    "Dehydrated water powder: just add real water to create instant mineral water for high-end luxury hikers.",
-    "A corporate networking app exclusively for people who have been fired from multi-million dollar corporations.",
-  ];
-  const CRISES = [
-    "A sudden 40% tax increase on luxury items has just been approved by the government.",
-    "Your main manufacturer in Asia has gone completely bankrupt, halting production for 6 months.",
-    "A massive viral tweet claims your company secretly uses cookies to record users' dreams.",
-    "Inflation has spiked, and the consumer's purchasing power has dropped to an all-time low this morning.",
-  ];
-  const INVESTORS = [
-    "Aggressive & Impatient: Interrupts constantly, despises buzzwords, wants to hear raw numbers immediately.",
-    "Skeptical Tech Guru: Intrigued by the data but convinced your infrastructure will crumble under a cyberattack.",
-    "The Eco-Conscious Billionaire: Will cancel you immediately if your product cannot prove a 100% carbon-neutral footprint.",
-  ];
-  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
-
-  const [data, setData] = useState({ product:'Pulsa el botón para girar el mercado...', crisis:'-', investor:'-' });
-  const [timeLeft, setTimeLeft] = useState(180);
-  const [running, setRunning]   = useState(false);
-  const intervalRef = useRef(null);
-
-  const stop = () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
-  useEffect(()=>()=>stop(), []);
-
-  const roll = () => {
-    setData({ product: pick(PRODUCTS), crisis: pick(CRISES), investor: pick(INVESTORS) });
-    resetTimer();
-  };
-  const startTimer = () => {
-    stop(); setRunning(true);
-    intervalRef.current = setInterval(()=>{
-      setTimeLeft(prev => { if (prev <= 1) { stop(); setRunning(false); return 0; } return prev - 1; });
-    }, 1000);
-  };
-  const resetTimer = () => { stop(); setRunning(false); setTimeLeft(180); };
-
-  const mm = String(Math.floor(timeLeft/60)).padStart(2,'0');
-  const ss = String(timeLeft%60).padStart(2,'0');
-  const timerLabel = (timeLeft===0 && !running) ? 'CROSS-EXAMINATION!' : `${mm}:${ss}`;
-
-  const CY='#06b6d4', GOLD='#fbbf24', DGR='#f43f5e';
-  const card = { background:'#151f32', borderRadius:16, padding:30, border:'1px solid #1e293b', boxShadow:'0 25px 50px -12px rgba(0,0,0,.5)' };
-  const slot = (gold)=>({ background:'#0b0f19', padding:20, borderRadius:10, borderLeft:`5px solid ${gold?GOLD:CY}` });
-  const lbl  = { display:'block', fontSize:'.75rem', color:'#64748b', textTransform:'uppercase', fontWeight:'bold', marginBottom:6 };
-  const btn  = { background:'linear-gradient(135deg,#06b6d4,#0891b2)', color:'#0b0f19', border:'none', padding:15, fontSize:'1.1rem', fontWeight:'bold', borderRadius:8, cursor:'pointer', width:'100%', boxShadow:'0 4px 14px rgba(6,182,212,.4)' };
-
-  return (
-    <div style={{background:'#0b0f19',minHeight:'100vh',color:'#f1f5f9',fontFamily:"'Segoe UI',system-ui,sans-serif",padding:25}}>
-      <div style={{maxWidth:1200,margin:'0 auto'}}>
-        <button onClick={onBack} style={{background:'transparent',border:'1px solid rgba(6,182,212,.5)',color:CY,padding:'7px 16px',borderRadius:8,cursor:'pointer',fontWeight:600,marginBottom:18}}>← Volver al aula</button>
-        <header style={{textAlign:'center',marginBottom:30}}>
-          <h1 style={{color:CY,fontSize:'2.8rem',margin:0,fontWeight:800}}>The Startup Shark Tank</h1>
-          <p style={{color:'#64748b',fontSize:'1.1rem'}}>Level C1 • Advanced Persuasion, Market Inversions & Real Corporate Strategy</p>
-        </header>
-
-        <div style={{display:'grid',gridTemplateColumns:'1.4fr 1fr',gap:30}}>
-          <div style={card}>
-            <h3 style={{color:CY,borderBottom:'2px solid #1e293b',paddingBottom:12,marginTop:0,display:'flex',justifyContent:'space-between',fontSize:'1.4rem'}}>🚀 Venture Deployment Board <span style={{color:GOLD}}>C1</span></h3>
-            <div style={{display:'flex',flexDirection:'column',gap:15,marginBottom:25}}>
-              <div style={slot(false)}><label style={lbl}>💡 The Absurd Product / Startup</label><span style={{fontSize:'1.2rem',fontWeight:600,lineHeight:1.4}}>{data.product}</span></div>
-              <div style={slot(false)}><label style={lbl}>📉 Current Market Crisis</label><span style={{fontSize:'1.2rem',fontWeight:600,lineHeight:1.4}}>{data.crisis}</span></div>
-              <div style={slot(true)}><label style={lbl}>🦈 The Investor's Personality</label><span style={{fontSize:'1.2rem',fontWeight:600,lineHeight:1.4,color:GOLD}}>{data.investor}</span></div>
-            </div>
-            <button style={btn} onClick={roll}>🎲 Roll New Venture</button>
-            <div style={{background:'#0b0f19',padding:20,borderRadius:12,textAlign:'center',marginTop:25,border:'1px solid #1e293b'}}>
-              <div style={{fontSize:'3.5rem',fontWeight:800,fontFamily:'monospace',color:(timeLeft===0&&!running)?DGR:'#f1f5f9'}}>{timerLabel}</div>
-              <div style={{display:'flex',gap:10,marginTop:10}}>
-                <button onClick={startTimer} disabled={running} style={{...btn,background:'#334155',color:'#fff',boxShadow:'none',opacity:running?0.6:1,cursor:running?'default':'pointer'}}>Iniciar pitch</button>
-                <button onClick={resetTimer} style={{...btn,background:DGR,color:'#fff',boxShadow:'none'}}>Reiniciar</button>
-              </div>
-            </div>
-          </div>
-
-          <div style={{...card,background:'#111827'}}>
-            <h3 style={{color:CY,borderBottom:'2px solid #1e293b',paddingBottom:12,marginTop:0,fontSize:'1.4rem'}}>🎯 Linguistic Evaluation Parameters</h3>
-            {[
-              ['Grammar Directive:',' Must open with a formal grammatical inversion (e.g., "Not only is this product revolutionary, but..." or "Under no circumstances should you miss...").'],
-              ['Idiomatic C1 Output:',' Must drop at least 2 high-level business idioms natively (e.g., "break even", "touch base", "ballpark figure", "ahead of the curve").'],
-              ["The Sharks' Attack Style:",' The rest of the class must aggressively question using hypothesis structures: "Supposing your supply chain fails, how would you...?"'],
-            ].map(([b,t],i)=>(
-              <div key={i} style={{background:'#1e293b',padding:15,borderRadius:8,marginBottom:12,fontSize:'.95rem'}}>
-                <span style={{color:GOLD,fontWeight:'bold'}}>{b}</span>{t}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function CrisisRoomGame({ onBack }) {
   const CRISES = [
     "An advanced AI satellite network has locked down all maritime trade routes in the Atlantic, demanding global digital disarmament.",
@@ -3019,8 +2925,8 @@ const handleAuth = async(e) => {
     <RoyaleGame token={token} onBack={()=>setScreen2('')} />
   );
 
-  if (screen2==='sharktank') return (
-    <SharkTankGame onBack={()=>setScreen2('')} />
+  if (screen2==='grimoire') return (
+    <GrimoireGame token={token} onBack={()=>setScreen2('')} />
   );
 
   if (screen2==='crisisroom') return (
@@ -3557,7 +3463,7 @@ const handleAuth = async(e) => {
           const CFG = {
             B1: { nombre:'AulaQuest Files — Detective Cases', icono:'🕵️', accent:'6,182,212',  txt:'#67e8f9', screen:'files',    grad:'linear-gradient(135deg,#06b6d4,#0891b2)', desc:'Resuelve el Caso #7 con tu escuadra: interroga sospechosos en past simple y present perfect, comparte pistas en vivo y descubre al culpable.' },
             B2: { nombre:'AulaQuest Royale — English Battle Royale', icono:'🪂', accent:'6,182,212', txt:'#67e8f9', screen:'royale',   grad:'linear-gradient(135deg,#06b6d4,#0891b2)', desc:'Battle royale de inglés: sobrevive la tormenta en escuadras, abre cofres, gana duelos 1v1 y revive a tu equipo con retos B2 (phrasal verbs, idioms, listening).' },
-            C1: { nombre:'The Startup Shark Tank', icono:'🦈', accent:'6,182,212',  txt:'#67e8f9', screen:'sharktank', grad:'linear-gradient(135deg,#06b6d4,#0891b2)', desc:'Presenta tu startup ante inversionistas usando inversiones formales, idioms de negocios y phrasal verbs C1 bajo presión.' },
+            C1: { nombre:'AulaQuest Grimoire — C1 Wizard Duels', icono:'📖', accent:'139,92,246',  txt:'#c4b5fd', screen:'grimoire', grad:'linear-gradient(135deg,#8b5cf6,#6d28d9)', desc:'Duelos PvP 1v1 de magos: cada hechizo es un reto C1 (collocations, matices, estructuras, register, acentos). Bloquea, encadena rachas y sube de liga con ELO.' },
             C2: { nombre:'Geopolitical Crisis Room', icono:'🌍', accent:'244,63,94',  txt:'#fda4af', screen:'crisisroom', grad:'linear-gradient(135deg,#f43f5e,#be123c)', desc:'Lidera un comité internacional ante una crisis global usando retórica C2, diplomacia, subjuntivo y condicionales sin "if".' },
           }[nivel];
           const temasCompletados = TOPICS.filter(t => progTemas[t.id]?.completo).length;

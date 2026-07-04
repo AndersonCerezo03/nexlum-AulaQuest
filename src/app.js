@@ -28,6 +28,7 @@ app.use('/api/arena',    require('./routes/arena'));
 app.use('/api/city',     require('./routes/city'));
 app.use('/api/files',    require('./routes/files'));
 app.use('/api/royale',   require('./routes/royale'));
+app.use('/api/grimoire', require('./routes/grimoire'));
 
 app.get('/', (_req, res) => res.json({ status: 'Nexlum API OK' }));
 
@@ -43,6 +44,7 @@ require('./arena/arenaSocket')(io);
 require('./city/citySocket')(io);   // AulaQuest City (namespace /city — módulo aislado)
 require('./files/filesSocket')(io); // AulaQuest Files (namespace /files — módulo aislado)
 require('./royale/royaleSocket')(io); // AulaQuest Royale (namespace /royale — módulo aislado)
+require('./grimoire/grimoireSocket')(io); // AulaQuest Grimoire (namespace /grimoire — módulo aislado)
 
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => console.log(`🚀  Backend corriendo en: http://localhost:${PORT}`));
