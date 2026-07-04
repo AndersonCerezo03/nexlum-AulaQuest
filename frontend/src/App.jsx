@@ -416,8 +416,24 @@ function MrAlexOrb({ size, state }) {
   );
 }
 
-function Home({ onEmpezar, user, onLogout }) {
+function MenuItem({ icon, label, onClick, danger }) {
+  return (
+    <div onClick={onClick}
+      onMouseEnter={e=>e.currentTarget.style.background=danger?'rgba(239,68,68,.1)':'rgba(139,92,246,.12)'}
+      onMouseLeave={e=>e.currentTarget.style.background='transparent'}
+      style={{display:'flex',alignItems:'center',gap:10,padding:'10px',borderRadius:10,cursor:'pointer',transition:'background .15s'}}>
+      <span style={{fontSize:'.98rem'}}>{icon}</span>
+      <span style={{fontSize:'.84rem',fontWeight:600,color:danger?'#f87171':'#e2e8f0'}}>{label}</span>
+    </div>
+  );
+}
+
+function Home({ onEmpezar, user, onLogout, onAdmin }) {
   const [cursosOpen, setCursosOpen] = useState(false);
+  const [userMenu, setUserMenu] = useState(false);
+  const [showPerfil, setShowPerfil] = useState(false);
+  const NIVEL_INFO = { A1:['Principiante','#10b981'], A2:['Elemental','#06b6d4'], B1:['Intermedio','#6366f1'], B2:['Intermedio alto','#8b5cf6'], C1:['Avanzado','#d946ef'], C2:['Maestría','#f59e0b'] };
+  const iniciales = (n) => (n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const canvasRef = useRef(null);
   useEffect(()=>{
     const cvs = canvasRef.current; if(!cvs) return;
@@ -460,13 +476,13 @@ function Home({ onEmpezar, user, onLogout }) {
           <span style={{fontWeight:700,fontSize:'1.15rem',background:'linear-gradient(135deg,#6366f1,#8b5cf6)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>AulaQuest</span>
         </div>
         <div style={{display:'flex',gap:4,alignItems:'center'}}>
-          <span style={{color:'#94a3b8',padding:'.45rem .85rem',borderRadius:8,fontSize:'.88rem',cursor:'pointer',fontWeight:500}}>Inicio</span>
+          <span onMouseEnter={e=>{e.currentTarget.style.background='rgba(139,92,246,.12)';e.currentTarget.style.color='#c4b5fd';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='#94a3b8';}} style={{color:'#94a3b8',padding:'.45rem .95rem',borderRadius:9,fontSize:'.88rem',cursor:'pointer',fontWeight:600,transition:'all .2s'}}>Inicio</span>
           <div style={{position:'relative'}}>
             <span onClick={()=>setCursosOpen(o=>!o)} style={{color: cursosOpen ? '#a5b4fc' : '#94a3b8',padding:'.45rem .85rem',borderRadius:8,fontSize:'.88rem',cursor:'pointer',fontWeight:500,display:'flex',alignItems:'center',gap:5,background: cursosOpen ? 'rgba(99,102,241,.1)' : 'transparent',transition:'all .2s'}}>
               📚 Cursos <span style={{fontSize:'.65rem',opacity:.7}}>{cursosOpen?'▲':'▼'}</span>
             </span>
             {cursosOpen && (
-              <div style={{position:'absolute',top:'calc(100% + 8px)',left:'50%',transform:'translateX(-50%)',background:'#0a0e1a',border:'1px solid rgba(99,102,241,.3)',borderRadius:16,padding:'10px',minWidth:320,zIndex:2000,boxShadow:'0 20px 60px rgba(0,0,0,.8), 0 0 0 1px rgba(99,102,241,.1)'}}>
+              <div style={{position:'absolute',top:'calc(100% + 10px)',left:'50%',transform:'translateX(-50%)',background:'rgba(13,17,28,.97)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',border:'1px solid rgba(139,92,246,.3)',borderRadius:16,padding:'10px',minWidth:320,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.7), 0 0 0 1px rgba(139,92,246,.08)'}}>
                 <div style={{fontSize:'.72rem',color:'#475569',fontWeight:600,letterSpacing:'.1em',padding:'4px 8px 8px',textTransform:'uppercase'}}>Marco Europeo de Referencia</div>
                 {[
                   {lvl:'A1',name:'Principiante',desc:'Palabras básicas y saludos',color:'#10b981',topics:'15 temas · 200+ palabras'},
@@ -500,9 +516,39 @@ function Home({ onEmpezar, user, onLogout }) {
         </div>
         {user ? (
           <div style={{display:'flex',alignItems:'center',gap:10}}>
-            <span style={{fontSize:'.85rem',color:'#e2e8f0',fontWeight:600}}>👤 {user.name}</span>
-            <button onClick={onEmpezar} style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',padding:'.5rem 1.2rem',borderRadius:8,fontWeight:600,fontSize:'.88rem',cursor:'pointer'}}>Ir al aula</button>
-            <button onClick={onLogout} style={{background:'transparent',color:'#ef4444',border:'1px solid rgba(239,68,68,.3)',padding:'.5rem 1rem',borderRadius:8,fontWeight:600,fontSize:'.85rem',cursor:'pointer'}}>Salir</button>
+            <button onClick={onEmpezar} style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',padding:'.5rem 1.2rem',borderRadius:8,fontWeight:600,fontSize:'.88rem',cursor:'pointer',boxShadow:'0 3px 12px rgba(99,102,241,.3)'}}>Ir al aula</button>
+            <div style={{position:'relative'}}>
+              <div onClick={()=>setUserMenu(o=>!o)}
+                onMouseEnter={e=>{ if(!userMenu) e.currentTarget.style.background='rgba(255,255,255,.06)'; }}
+                onMouseLeave={e=>{ if(!userMenu) e.currentTarget.style.background='rgba(255,255,255,.03)'; }}
+                style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',padding:'4px 12px 4px 4px',borderRadius:50,border:'1px solid '+(userMenu?'rgba(139,92,246,.5)':'rgba(139,92,246,.22)'),background:userMenu?'rgba(139,92,246,.14)':'rgba(255,255,255,.03)',transition:'all .2s'}}>
+                <div style={{width:32,height:32,borderRadius:'50%',background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:'.72rem',color:'#fff'}}>{iniciales(user.name)}</div>
+                <span style={{fontSize:'.82rem',color:'#e2e8f0',fontWeight:600,maxWidth:110,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user.name}</span>
+                <span style={{fontSize:'.58rem',color:'#a5b4fc'}}>{userMenu?'▲':'▼'}</span>
+              </div>
+              {userMenu && <div onClick={()=>setUserMenu(false)} style={{position:'fixed',inset:0,zIndex:1999}}/>}
+              {userMenu && (()=>{ const [ln,lc]=NIVEL_INFO[user.englishLevel]||['','#6366f1']; const esAdmin=user.role==='admin'; return (
+                <div style={{position:'absolute',top:'calc(100% + 12px)',right:0,minWidth:264,background:'rgba(13,17,28,.97)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',border:'1px solid rgba(139,92,246,.3)',borderRadius:16,padding:10,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.7), 0 0 0 1px rgba(139,92,246,.08)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:11,padding:'6px 8px 12px'}}>
+                    <div style={{width:46,height:46,borderRadius:'50%',background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:'1rem',color:'#fff',flexShrink:0}}>{iniciales(user.name)}</div>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:'.92rem',fontWeight:700,color:'#e2e8f0',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user.name}</div>
+                      <div style={{fontSize:'.68rem',color:'#64748b',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user.email}</div>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:9,background:lc+'18',border:'1px solid '+lc+'44',borderRadius:11,padding:'8px 11px',marginBottom:8}}>
+                    <span style={{fontSize:'1rem'}}>{esAdmin?'🛡️':'🎓'}</span>
+                    <div><div style={{fontSize:'.64rem',color:'#64748b'}}>{esAdmin?'Rol':'Tu aula'}</div><div style={{fontSize:'.82rem',fontWeight:700,color:lc}}>{esAdmin?'Administrador':(user.englishLevel+' — '+ln)}</div></div>
+                  </div>
+                  {esAdmin
+                    ? <MenuItem icon="🛡️" label="Panel de administrador" onClick={()=>{ setUserMenu(false); onAdmin&&onAdmin(); }}/>
+                    : <MenuItem icon="👤" label="Ver mi perfil" onClick={()=>{ setUserMenu(false); setShowPerfil(true); }}/>}
+                  <MenuItem icon="🚀" label="Ir al aula" onClick={()=>{ setUserMenu(false); onEmpezar(); }}/>
+                  <div style={{height:1,background:'rgba(255,255,255,.07)',margin:'6px 6px'}}/>
+                  <MenuItem icon="🚪" label="Cerrar sesión" danger onClick={()=>{ setUserMenu(false); onLogout(); }}/>
+                </div>
+              );})()}
+            </div>
           </div>
         ) : (
           <button onClick={onEmpezar} style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',padding:'.5rem 1.2rem',borderRadius:8,fontWeight:600,fontSize:'.88rem',cursor:'pointer',boxShadow:'0 3px 12px rgba(99,102,241,.35)'}}>
@@ -510,6 +556,31 @@ function Home({ onEmpezar, user, onLogout }) {
           </button>
         )}
       </nav>
+
+      {showPerfil && user && (()=>{ const [ln,lc]=NIVEL_INFO[user.englishLevel]||['','#6366f1']; return (
+        <div onClick={()=>setShowPerfil(false)} style={{position:'fixed',inset:0,zIndex:3000,background:'rgba(2,6,23,.8)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:420,background:'linear-gradient(180deg,rgba(20,24,40,.98),rgba(13,17,28,.98))',border:'1px solid rgba(139,92,246,.3)',borderRadius:22,padding:'1.6rem',boxShadow:'0 30px 80px rgba(0,0,0,.7)',position:'relative'}}>
+            <button onClick={()=>setShowPerfil(false)} style={{position:'absolute',top:14,right:14,background:'none',border:'none',color:'#64748b',fontSize:'1.1rem',cursor:'pointer'}}>✕</button>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',marginBottom:16}}>
+              <div style={{width:76,height:76,borderRadius:'50%',background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:'1.7rem',color:'#fff',boxShadow:'0 8px 24px rgba(139,92,246,.4)'}}>{iniciales(user.name)}</div>
+              <div style={{fontSize:'1.2rem',fontWeight:800,color:'#f1f5f9',marginTop:12}}>{user.name}</div>
+              <div style={{fontSize:'.8rem',color:'#64748b'}}>{user.email}</div>
+              <div style={{marginTop:8,display:'inline-flex',alignItems:'center',gap:6,background:lc+'1e',border:'1px solid '+lc+'55',color:lc,fontSize:'.72rem',fontWeight:700,padding:'4px 12px',borderRadius:50}}>🎓 Aula {user.englishLevel} — {ln}</div>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+              {[['⭐',(user.experiencePoints||0)+' XP','Experiencia'],['🗣️',(user.wordsCorrect||0),'Palabras correctas'],['🏆',(user.nivelesAprobados||[]).length,'Niveles aprobados'],['📅',user.createdAt?new Date(user.createdAt).toLocaleDateString('es-CO',{month:'short',year:'numeric'}):'—','Miembro desde']].map(([ic,val,lbl])=>(
+                <div key={lbl} style={{background:'rgba(255,255,255,.03)',border:'1px solid rgba(139,92,246,.15)',borderRadius:12,padding:'12px'}}>
+                  <div style={{fontSize:'1.1rem'}}>{ic}</div>
+                  <div style={{fontSize:'1.05rem',fontWeight:800,color:'#e2e8f0',marginTop:2}}>{val}</div>
+                  <div style={{fontSize:'.64rem',color:'#64748b'}}>{lbl}</div>
+                </div>
+              ))}
+            </div>
+            <button onClick={()=>{ setShowPerfil(false); onEmpezar(); }} style={{width:'100%',background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.9rem',cursor:'pointer'}}>🚀 Ir a mi aula</button>
+          </div>
+        </div>
+      );})()}
+
       <section style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'8rem 2rem 4rem',position:'relative',zIndex:1}}>
         <div style={{position:'absolute',top:'-50%',left:'-20%',width:800,height:800,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',opacity:.07,borderRadius:'50%',filter:'blur(100px)',animation:'pulse-glow 6s ease-in-out infinite'}}/>
         <div className="aq-2col" style={{maxWidth:1200,width:'100%',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4rem',alignItems:'center'}}>          
@@ -3052,7 +3123,7 @@ const handleAuth = async(e) => {
   if (screen==='home') return (
     <>
       <style>{KF}</style>
-      <Home onEmpezar={()=>setScreen(user ? 'curso' : 'auth')} user={user} onLogout={logout}/>
+      <Home onEmpezar={()=>setScreen(user ? 'curso' : 'auth')} user={user} onLogout={logout} onAdmin={()=>{ setScreen('curso'); setScreen2('admin'); }}/>
     </>
   );
 
