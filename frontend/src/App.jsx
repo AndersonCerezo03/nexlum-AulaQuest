@@ -454,7 +454,7 @@ function Home({ onEmpezar, user, onLogout }) {
     <div style={{background:'#020617',minHeight:'100vh',fontFamily:"'Poppins',sans-serif",color:'#e2e8f0',overflowX:'hidden'}}>
       <style>{KF}</style>
       <canvas ref={canvasRef} style={{position:'fixed',inset:0,pointerEvents:'none',zIndex:0}}/>
-      <nav style={{position:'fixed',top:0,left:0,width:'100%',zIndex:1000,height:62,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 2rem',background:'rgba(9,11,21,0.92)',backdropFilter:'blur(24px)'}}>
+      <nav style={{position:'fixed',top:0,left:0,width:'100%',zIndex:1000,height:62,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 2rem',background:'rgba(10,14,26,.45)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <div style={{width:36,height:36,background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1rem'}}>🎓</div>
           <span style={{fontWeight:700,fontSize:'1.15rem',background:'linear-gradient(135deg,#6366f1,#8b5cf6)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>AulaQuest</span>
