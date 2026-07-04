@@ -178,4 +178,64 @@ router.post('/ultimo-tema', auth, async function(req, res) {
   }
 });
 
+// ─── POST /api/practice/ejemplo — oración de ejemplo + explicación de uso ───
+// Mr. Alex enseña cada palabra EN CONTEXTO: una oración real, su traducción y
+// cómo se usa/conjuga, explicado en español simple. Se genera UNA vez con
+// OpenAI y queda cacheada en Mongo (las siguientes veces no cuesta nada).
+const EjemploPalabra = require('../models/EjemploPalabra');
+
+router.post('/ejemplo', auth, async function(req, res) {
+  try {
+    const en = String(req.body.en || '').trim();
+    const es = String(req.body.es || '').trim();
+    if (!en) return res.status(400).json({ msg: 'Falta la palabra' });
+
+    // 1) Cache en Mongo
+    const cached = await EjemploPalabra.findOne({ en });
+    if (cached) return res.json({ frase: cached.frase, fraseEs: cached.fraseEs, explicacion: cached.explicacion });
+
+    // 2) Generar con OpenAI (barato, una sola vez por palabra)
+    const KEY = process.env.OPENAI_API_KEY;
+    let frase = '', fraseEs = '', explicacion = '';
+    if (KEY) {
+      try {
+        const r = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            temperature: 0.4,
+            response_format: { type: 'json_object' },
+            messages: [
+              { role: 'system', content: 'Eres Mr. Alex, profesor de inglés para principiantes hispanohablantes. Respondes SOLO JSON válido.' },
+              { role: 'user', content:
+                'Palabra/frase en inglés: "' + en + '" (significa: "' + es + '").\n' +
+                'Devuelve JSON con: {"frase": una oración de ejemplo MUY simple (nivel principiante, máx 8 palabras) usando exactamente esa palabra en una conversación real, ' +
+                '"fraseEs": su traducción al español, ' +
+                '"explicacion": 1-2 frases en español MUY simple explicando cómo se usa la palabra en la oración (si es verbo, cómo se conjuga: ej. "am se usa con I: I am = yo soy"; si es sustantivo/frase, cuándo se dice)}.' },
+            ],
+          }),
+        });
+        if (r.ok) {
+          const d = await r.json();
+          const j = JSON.parse(d.choices[0].message.content);
+          frase = String(j.frase || '').slice(0, 140);
+          fraseEs = String(j.fraseEs || '').slice(0, 140);
+          explicacion = String(j.explicacion || '').slice(0, 260);
+        }
+      } catch (e) { /* cae al fallback */ }
+    }
+    // 3) Fallback sin IA: plantilla básica
+    if (!frase) {
+      frase = 'I say "' + en + '" every day.';
+      fraseEs = 'Digo "' + en + '" todos los días.';
+      explicacion = '"' + en + '" significa "' + es + '". Úsala en tus conversaciones en inglés.';
+    }
+    await EjemploPalabra.create({ en, es, frase, fraseEs, explicacion }).catch(() => {});
+    return res.json({ frase, fraseEs, explicacion });
+  } catch (err) {
+    return res.status(500).json({ msg: err.message });
+  }
+});
+
 module.exports = router;

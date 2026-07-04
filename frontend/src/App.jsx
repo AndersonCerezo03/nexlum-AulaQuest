@@ -173,8 +173,40 @@ function ttsBlob(text, lang, token) {
   _ttsBlobCache[key] = p;
   return p;
 }
-// Precargar el audio (inglés + español) de una palabra
-function prefetchWord(w, token) { if (w && token) { ttsBlob(w.en, 'en', token); ttsBlob(w.es, 'es', token); } }
+// Precargar el audio (inglés + español + versión lenta) de una palabra
+function prefetchWord(w, token) { if (w && token) { ttsBlob(w.en, 'en', token); ttsBlob(w.es, 'es', token); ttsBlob(w.en, 'slow', token); } }
+
+// Mensajes de corrección suave cuando el alumno pronuncia mal (se precargan)
+const ALEX_CORRECCION = [
+  'No, no es así. Estás pronunciando diferente. Escucha con atención e intenta más suave, como lo hago yo.',
+  'Casi, pero no es así. Tranquilo. Escúchame de nuevo: primero despacio, y repite suave como yo.',
+  'Esa no fue la pronunciación correcta. No te preocupes. Escucha cómo lo digo yo, despacio, e inténtalo otra vez.',
+];
+
+// Mr. Alex pronuncia la palabra DESPACIO (modo tortuga), para modelar la pronunciación
+function alexSpeakSlow(text, token, onEnd) {
+  const mySeq = ++_alexCallSeq;
+  let done = false, guard = setTimeout(finish, 9000);
+  function finish() { if (done) return; done = true; clearTimeout(guard); if (onEnd) onEnd(); }
+  if (window._alexListening) { finish(); return; }
+  if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  const fallback = () => {
+    if (!window.speechSynthesis) { finish(); return; }
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 0.4; u.pitch = 1.0;
+    u.onend = finish; u.onerror = finish;
+    window.speechSynthesis.speak(u);
+  };
+  ttsBlob(text, 'slow', token).then(blob => {
+    if (mySeq !== _alexCallSeq) { finish(); return; }
+    if (!blob) { fallback(); return; }
+    const a = new Audio(URL.createObjectURL(blob));
+    _currentAudio = a;
+    a.onended = finish; a.onerror = finish;
+    a.play().catch(finish);
+  }).catch(fallback);
+}
 
 async function alexSpeakBilingual(enText, esText, token, onEnd, onStart) {
   const mySeq = ++_alexCallSeq; // si se llama stopAlex (cierre del panel), esta reproducción se corta
@@ -2452,6 +2484,7 @@ export default function App() {
   const [bubble,    setBubble]    = useState('¡Hola! 👋 Soy Mr. Alex, tu tutor de inglés. Selecciona un tema y empezamos!');
   const [bubbleType,setBubbleType]= useState('');
   const [word,      setWord]      = useState(null);
+  const [ejemplo,   setEjemplo]   = useState(null);   // oración de ejemplo + explicación de uso
   const [listening, setListening] = useState(false);
   const [correct,   setCorrect]   = useState(0);
   const [total,     setTotal]     = useState(0);
@@ -2719,6 +2752,8 @@ const handleAuth = async(e) => {
       const first = (vocabData[temaObj.id] || []).find(w => !done.includes(w.en));
       prefetchWord(first, window._alexToken || token);
     }
+    // Precargar los mensajes de corrección (para que la corrección sea inmediata)
+    ALEX_CORRECCION.forEach(t => ttsBlob(t, 'es', window._alexToken || token));
   };
 
   const closeCloud = () => {
@@ -2766,13 +2801,27 @@ const handleAuth = async(e) => {
     const w = pool[0];
     usedWordsRef.current = [...usedWordsRef.current, w.en];
     setWord(w);
-    prefetchWord(pool[1] || pendientes.find(x => x.en !== w.en), window._alexToken || token); // adelantar la siguiente
+    setEjemplo(null);
+    const tok = window._alexToken || token;
+    prefetchWord(w, tok);                                                        // incluye versión lenta (para correcciones)
+    prefetchWord(pool[1] || pendientes.find(x => x.en !== w.en), tok);           // adelantar la siguiente
+    // Oración de ejemplo + explicación de uso (cacheada en el backend)
+    const pEj = fetch(API+'/api/practice/ejemplo', { method:'POST', headers: authH(tok), body: JSON.stringify({ en: w.en, es: w.es }) })
+      .then(r => r.ok ? r.json() : null).catch(() => null);
+    pEj.then(ej => { if (ej && ej.frase) { setEjemplo(ej); ttsBlob(ej.frase, 'en', tok); if (ej.explicacion) ttsBlob(ej.explicacion, 'es', tok); } });
     setBubble('📖 ' + w.en + ' = ' + w.es + ' — Escucha y repite!'); setBubbleType('');
     setOrbState('thinking');
-    // Solo decir la palabra 2 veces, rapido y claro
-    alexSpeakBilingual(w.en, w.es, window._alexToken || token, ()=>{
-      setOrbState('listening');
-      setBubble('🎤 Di: ' + w.en + ' (' + w.es + ')');
+    // Palabra (EN→ES→EN) y luego Mr. Alex la enseña EN CONTEXTO: oración real + cómo se usa
+    alexSpeakBilingual(w.en, w.es, tok, async ()=>{
+      const ej = await pEj.catch(() => null);
+      const alListening = () => { setOrbState('listening'); setBubble('🎤 Di: ' + w.en + ' (' + w.es + ')'); };
+      if (ej && ej.frase) {
+        setBubble('🗣️ ' + ej.frase + ' — ' + (ej.fraseEs || ''));
+        alexSpeak('For example: ' + ej.frase, 0.88, ()=>{
+          if (ej.explicacion) alexSpeak(ej.explicacion, 0.98, alListening, 'es', ()=>setOrbState('speaking'));
+          else alListening();
+        }, null, ()=>setOrbState('speaking'));
+      } else alListening();
     }, ()=>setOrbState('speaking'));
   };
 
@@ -2864,11 +2913,19 @@ const handleAuth = async(e) => {
           });
         }
       } else {
-                const msgErr = randFn(ALEX_ERROR, word.en, word.es);
-        setBubble('❌ ' + msgErr); setBubbleType('err'); setOrbState('thinking');
-        alexSpeakBilingual(word.en, word.es, window._alexToken || '',
-          ()=>{ setOrbState('listening'); setBubble('🎤 Otra vez: ' + word.en + ' (' + word.es + ')'); setBubbleType(''); },
-          ()=>setOrbState('speaking'));
+        // Corrección suave CADA vez que pronuncia mal: Mr. Alex le explica con
+        // calma, modela la palabra DESPACIO (como él) y luego normal, y escucha de nuevo.
+        const tok = window._alexToken || token;
+        setBubble('🔁 No es así. Escucha: primero despacio, luego normal. ¡Tú puedes!'); setBubbleType('err'); setOrbState('thinking');
+        alexSpeak(rand(ALEX_CORRECCION), 0.98, ()=>{
+          setBubble('🐢 ' + word.en + ' — despacio…');
+          alexSpeakSlow(word.en, tok, ()=>{
+            setBubble('🔊 ' + word.en + ' — ahora normal');
+            alexSpeak(word.en, 0.85, ()=>{
+              setOrbState('listening'); setBubble('🎤 Otra vez, suave: ' + word.en + ' (' + word.es + ')'); setBubbleType('');
+            }, null, ()=>setOrbState('speaking'));
+          });
+        }, 'es', ()=>setOrbState('speaking'));
       }
     };
     // Si start() falla (mic ocupado o reconocimiento ya activo), liberar todo para poder reintentar
@@ -3668,6 +3725,22 @@ const handleAuth = async(e) => {
                   🐢 Despacio
                 </button>
               </div>
+              {ejemplo && (
+                <div style={{marginTop:12,background:'rgba(99,102,241,.07)',border:'1px solid rgba(99,102,241,.22)',borderRadius:12,padding:'10px 14px',textAlign:'left'}}>
+                  <div style={{fontSize:'.6rem',fontWeight:800,color:'#a5b4fc',letterSpacing:'.07em',marginBottom:5}}>💬 ASÍ SE USA EN UNA CONVERSACIÓN</div>
+                  <div style={{fontSize:'.92rem',fontWeight:700,color:'#e2e8f0'}}>
+                    {ejemplo.frase}
+                    <button onClick={()=>alexSpeak(ejemplo.frase, 0.88)} style={{background:'none',border:'none',cursor:'pointer',fontSize:'.9rem',marginLeft:6}}>🔊</button>
+                  </div>
+                  <div style={{fontSize:'.72rem',color:'#94a3b8',marginTop:2}}>{ejemplo.fraseEs}</div>
+                  {ejemplo.explicacion && (
+                    <div style={{fontSize:'.72rem',color:'#fbbf24',marginTop:7,lineHeight:1.45}}>
+                      📘 {ejemplo.explicacion}
+                      <button onClick={()=>alexSpeak(ejemplo.explicacion, 0.98, null, 'es')} style={{background:'none',border:'none',cursor:'pointer',fontSize:'.85rem',marginLeft:5}}>🔊</button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ):(
             <div style={{background:'#020617',border:'1px dashed rgba(99,102,241,.2)',borderRadius:14,padding:'1.5rem',textAlign:'center',marginBottom:'1rem',color:'#334155',fontSize:'.85rem'}}>Toca "Nueva palabra" para comenzar</div>
