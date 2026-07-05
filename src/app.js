@@ -29,6 +29,7 @@ app.use('/api/city',     require('./routes/city'));
 app.use('/api/files',    require('./routes/files'));
 app.use('/api/royale',   require('./routes/royale'));
 app.use('/api/grimoire', require('./routes/grimoire'));
+app.use('/api/tribunal', require('./routes/tribunal'));
 
 app.get('/', (_req, res) => res.json({ status: 'Nexlum API OK' }));
 

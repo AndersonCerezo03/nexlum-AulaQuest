@@ -4,6 +4,7 @@ import CityGame from './City.jsx';
 import FilesGame from './Files.jsx';
 import RoyaleGame from './Royale.jsx';
 import GrimoireGame from './Grimoire.jsx';
+import TribunalGame from './Tribunal.jsx';
 
 const API = import.meta.env.VITE_API_URL || 'https://nexlum-aulaquest.onrender.com';
 const authH = (t) => ({ 'Content-Type':'application/json', 'Authorization':'Bearer '+t });
@@ -3115,8 +3116,8 @@ const handleAuth = async(e) => {
     <GrimoireGame token={token} onBack={()=>setScreen2('')} />
   );
 
-  if (screen2==='crisisroom') return (
-    <CrisisRoomGame onBack={()=>setScreen2('')} />
+  if (screen2==='tribunal') return (
+    <TribunalGame token={token} user={user} onBack={()=>setScreen2('')} />
   );
 
   if (screen2==='interview') return (
@@ -3730,7 +3731,7 @@ const handleAuth = async(e) => {
             B1: { nombre:'AulaQuest Files — Detective Cases', icono:'🕵️', accent:'6,182,212',  txt:'#67e8f9', screen:'files',    grad:'linear-gradient(135deg,#06b6d4,#0891b2)', desc:'Resuelve el Caso #7 con tu escuadra: interroga sospechosos en past simple y present perfect, comparte pistas en vivo y descubre al culpable.' },
             B2: { nombre:'AulaQuest Royale — English Battle Royale', icono:'🪂', accent:'6,182,212', txt:'#67e8f9', screen:'royale',   grad:'linear-gradient(135deg,#06b6d4,#0891b2)', desc:'Battle royale de inglés: sobrevive la tormenta en escuadras, abre cofres, gana duelos 1v1 y revive a tu equipo con retos B2 (phrasal verbs, idioms, listening).' },
             C1: { nombre:'AulaQuest Grimoire — C1 Wizard Duels', icono:'📖', accent:'139,92,246',  txt:'#c4b5fd', screen:'grimoire', grad:'linear-gradient(135deg,#8b5cf6,#6d28d9)', desc:'Duelos PvP 1v1 de magos: cada hechizo es un reto C1 (collocations, matices, estructuras, register, acentos). Bloquea, encadena rachas y sube de liga con ELO.' },
-            C2: { nombre:'Geopolitical Crisis Room', icono:'🌍', accent:'244,63,94',  txt:'#fda4af', screen:'crisisroom', grad:'linear-gradient(135deg,#f43f5e,#be123c)', desc:'Lidera un comité internacional ante una crisis global usando retórica C2, diplomacia, subjuntivo y condicionales sin "if".' },
+            C2: { nombre:'El Tribunal — Duelo de Retórica', icono:'⚖️', accent:'201,162,75',  txt:'#E4C36E', screen:'tribunal', grad:'linear-gradient(135deg,#7C2E2E,#C9A24B)', desc:'Juego de rol oculto: cumple un mandato retórico secreto sin declararlo, engaña al jurado con un bluff o desenmascara al abogado. El Magistrado (IA) dicta veredicto. 2-4 jugadores.' },
           }[nivel];
           const temasCompletados = TOPICS.filter(t => progTemas[t.id]?.completo).length;
           const juegoDesbloqueado = esAdmin || (temasCompletados >= 3);
