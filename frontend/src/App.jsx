@@ -3852,21 +3852,14 @@ const handleAuth = async(e) => {
 
         {/* ── Material de apoyo (PDFs) — en todas las aulas ────────────── */}
         {(()=>{
-          const MAT = {
-            A1: [
-              { ic:'📘', t:'Guía de gramática A1',   d:'Verb to be, presente, artículos', url:'/material/AulaQuest_Guia_Gramatica_A1.pdf' },
-              { ic:'📋', t:'Vocabulario A1 completo', d:'Todas las palabras con traducción', url:'/material/AulaQuest_Vocabulario_A1_Completo.pdf' },
-              { ic:'✏️', t:'Hojas de ejercicios',     d:'Práctica imprimible por tema', url:'/material/AulaQuest_Hojas_de_Ejercicios_A1.pdf' },
-              { ic:'🔊', t:'Guía de pronunciación',   d:'Sonidos del inglés con audio', url:'/material/AulaQuest_Guia_Pronunciacion.pdf' },
-            ],
-          };
-          const cards = MAT[nivel] || [
-            { ic:'📘', t:'Guía de gramática '+nivel,     d:'Reglas clave del nivel '+nivel, url:'' },
-            { ic:'📋', t:'Vocabulario '+nivel+' completo', d:'Todas las palabras con traducción', url:'' },
-            { ic:'✏️', t:'Hojas de ejercicios',          d:'Práctica imprimible por tema', url:'' },
-            { ic:'🔊', t:'Guía de pronunciación',        d:'Sonidos del inglés', url:'' },
+          // Los PDFs siguen la convención /material/AulaQuest_<tipo>_<nivel>.pdf
+          const cards = [
+            { ic:'📘', t:'Guía de gramática '+nivel,       d:'Reglas clave del nivel '+nivel, url:'/material/AulaQuest_Guia_Gramatica_'+nivel+'.pdf' },
+            { ic:'📋', t:'Vocabulario '+nivel+' completo',  d:'Todas las palabras con traducción', url:'/material/AulaQuest_Vocabulario_'+nivel+'_Completo.pdf' },
+            { ic:'✏️', t:'Hojas de ejercicios',            d:'Práctica imprimible por tema', url:'/material/AulaQuest_Hojas_de_Ejercicios_'+nivel+'.pdf' },
+            { ic:'🔊', t:'Guía de pronunciación',          d:'Sonidos del inglés con audio', url:'/material/AulaQuest_Guia_Pronunciacion.pdf' },
           ];
-          const hayPdf = cards.some(c=>c.url);
+          const hayPdf = true;
           return (
         <div style={{marginTop:'1rem'}}>
           <button onClick={()=>setShowMaterial(!showMaterial)}
