@@ -2592,7 +2592,8 @@ export default function App() {
   };
 
   const esAdmin = user?.role === 'admin';
-  const interviewLocked = !esAdmin && !(user?.interviewUnlocked); // entrevistas bloqueadas hasta que el admin las habilite
+  // Entrevistas: se desbloquean al aprobar el examen C2 (o si el admin las habilita)
+  const interviewLocked = !esAdmin && !(user?.interviewUnlocked) && !((user?.nivelesAprobados||[]).includes('C2'));
   const [showInterviewModal, setShowInterviewModal] = useState(false);
   const [interviewReqState,  setInterviewReqState]  = useState(''); // ''|'sending'|'sent'|'error'
   const [showMaterial,       setShowMaterial]       = useState(false); // panel de material de apoyo (PDFs)
@@ -3085,7 +3086,7 @@ const handleAuth = async(e) => {
       nivel={nivel}
       token={token}
       onBack={()=>setScreen2('')}
-      onPass={()=>{ setScreen2(''); setLvlUp(true); setScreen('curso'); setTimeout(()=>setLvlUp(false),4000); }}
+      onPass={()=>{ setScreen2(''); setLvlUp(true); setScreen('curso'); setTimeout(()=>setLvlUp(false),4000); if(nivel==='C2'){ setTimeout(()=>{ const el=document.getElementById('c2-entrevistas'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); },700); } }}
       onUserUpdate={(u)=>setUser(u)}
     />
   );
@@ -3618,13 +3619,13 @@ const handleAuth = async(e) => {
           </div>
         )}
         {nivel === 'C2' && (
-        <div style={{background:'linear-gradient(135deg,rgba(99,102,241,.06),rgba(139,92,246,.08))',border:'1px solid rgba(99,102,241,.2)',borderRadius:16,padding:'1.1rem 1.3rem',marginBottom:'1rem',boxShadow:'0 10px 30px rgba(0,0,0,.45)'}}>
+        <div id="c2-entrevistas" style={{background: interviewLocked ? 'linear-gradient(135deg,rgba(99,102,241,.06),rgba(139,92,246,.08))' : 'linear-gradient(135deg,rgba(16,185,129,.1),rgba(6,182,212,.08))',border:'1px solid '+(interviewLocked?'rgba(99,102,241,.2)':'rgba(16,185,129,.35)'),borderRadius:16,padding:'1.1rem 1.3rem',marginBottom:'1rem',boxShadow:'0 10px 30px rgba(0,0,0,.45)',transition:'all .3s'}}>
           <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
             <span style={{fontSize:'1.1rem'}}>💼</span>
             <span style={{fontSize:'.88rem',fontWeight:700,color:'#e2e8f0'}}>Entrevista de Trabajo con IA</span>
-            <span style={{background:'rgba(99,102,241,.15)',color:'#a5b4fc',fontSize:'.6rem',fontWeight:700,padding:'2px 7px',borderRadius:50}}>RETO FINAL C2</span>
+            <span style={{background: interviewLocked ? 'rgba(99,102,241,.15)' : 'rgba(16,185,129,.18)',color: interviewLocked ? '#a5b4fc' : '#34d399',fontSize:'.6rem',fontWeight:700,padding:'2px 7px',borderRadius:50}}>{interviewLocked ? 'RETO FINAL C2' : '✅ DESBLOQUEADA'}</span>
           </div>
-          <p style={{color:'#64748b',fontSize:'.75rem',margin:'0 0 12px'}}>Elige a tu entrevistador y practica en inglés. Recibe feedback en tiempo real.</p>
+          <p style={{color:'#64748b',fontSize:'.75rem',margin:'0 0 12px'}}>{interviewLocked ? 'Aprueba el examen final C2 para desbloquear las entrevistas con IA en tiempo real.' : '¡Aprobaste el examen C2! Elige a tu entrevistador y practica en inglés con feedback en tiempo real.'}</p>
 
           {(()=>{
             const ENTREVISTADORES=[
