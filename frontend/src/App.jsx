@@ -188,7 +188,7 @@ const ALEX_CORRECCION = [
 function alexSpeakSlow(text, token, onEnd) {
   const mySeq = ++_alexCallSeq;
   let done = false, guard = setTimeout(finish, 9000);
-  function finish() { if (done) return; done = true; clearTimeout(guard); if (onEnd) onEnd(); }
+  function finish() { if (done) return; done = true; clearTimeout(guard); if (onEnd && mySeq === _alexCallSeq) onEnd(); }
   if (window._alexListening) { finish(); return; }
   if (_currentAudio) { _currentAudio.pause(); _currentAudio = null; }
   window.speechSynthesis && window.speechSynthesis.cancel();
@@ -214,7 +214,7 @@ async function alexSpeakBilingual(enText, esText, token, onEnd, onStart) {
   // onEnd se llama UNA sola vez. Watchdog: libera el flujo aunque un audio de la
   // secuencia se cuelgue, para que la práctica no quede trabada en "speaking".
   let done = false, guard = null;
-  const finish = () => { if (done) return; done = true; if (guard) clearTimeout(guard); if (onEnd) onEnd(); };
+  const finish = () => { if (done) return; done = true; if (guard) clearTimeout(guard); if (onEnd && mySeq === _alexCallSeq) onEnd(); };
   guard = setTimeout(finish, 14000);
   // onStart avisa cuando el primer audio EMPIEZA a sonar (no cuando se pide)
   let started = false;
@@ -290,7 +290,7 @@ function alexSpeak(text, rate, onEnd, lang, onStart) {
   // de fin (bug de Web Speech, blob inválido o red lenta), el flujo se libera igual
   // para que la práctica del aula no se quede trabada esperando para siempre.
   let done = false, guard = null;
-  const finish = () => { if (done) return; done = true; if (guard) clearTimeout(guard); if (onEnd) onEnd(); };
+  const finish = () => { if (done) return; done = true; if (guard) clearTimeout(guard); if (onEnd && mySeq === _alexCallSeq) onEnd(); };
   guard = setTimeout(finish, 9000);
   // onStart avisa cuando el audio EMPIEZA a sonar de verdad (no cuando se pide),
   // para que el orbe muestre "hablando" solo al oírse, no antes.
@@ -2868,7 +2868,7 @@ const handleAuth = async(e) => {
   const closeCloud = () => {
     stopAlex();                 // detener la voz de Mr. Alex al cerrar el panel
     window._alexListening = false;
-    setCloudOpen(false); setOrbState('idle'); setWord(null);
+    setCloudOpen(false); setOrbState('idle'); setWord(null); setFraseReto(null); setEjemplo(null);
     // Guardar posición al salir
     if (tema) fetch(API+'/api/practice/ultimo-tema',{method:'POST',headers:authH(token),body:JSON.stringify({temaId:tema.id})}).catch(()=>{});
   };
