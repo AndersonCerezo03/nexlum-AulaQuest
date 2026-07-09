@@ -2595,6 +2595,7 @@ export default function App() {
   // Entrevistas: se desbloquean al aprobar el examen C2 (o si el admin las habilita)
   const interviewLocked = !esAdmin && !(user?.interviewUnlocked) && !((user?.nivelesAprobados||[]).includes('C2'));
   const [showInterviewModal, setShowInterviewModal] = useState(false);
+  const [showDailyModal, setShowDailyModal] = useState(false);   // aviso de límite diario (versión gratuita)
   const [interviewReqState,  setInterviewReqState]  = useState(''); // ''|'sending'|'sent'|'error'
   const [showMaterial,       setShowMaterial]       = useState(false); // panel de material de apoyo (PDFs)
   const nivel = (esAdmin && adminVistaNivel) ? adminVistaNivel : (user?.englishLevel || 'A1');
@@ -3275,6 +3276,18 @@ const handleAuth = async(e) => {
     <div style={{background:'#020617',minHeight:'100vh',fontFamily:"'Poppins',sans-serif",color:'#e2e8f0',position:'relative'}}>
       <style>{KF}</style>
       {showDiag && <DiagnosticoPanel diag={user?.diagnostico} userName={user?.name||''} onClose={()=>setShowDiag(false)} />}
+      {showDailyModal && (
+        <div onClick={()=>setShowDailyModal(false)} style={{position:'fixed',inset:0,background:'rgba(2,4,10,.8)',backdropFilter:'blur(4px)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:18,fontFamily:"'Poppins',sans-serif"}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:420,background:'#0d1117',borderRadius:22,border:'1px solid rgba(245,158,11,.3)',padding:'28px 26px',textAlign:'center',boxShadow:'0 12px 50px rgba(0,0,0,.7)'}}>
+            <div style={{fontSize:'2.4rem'}}>🌙</div>
+            <h3 style={{color:'#fbbf24',margin:'8px 0 6px',fontSize:'1.15rem',fontWeight:800}}>Un tema por día</h3>
+            <p style={{color:'#cbd5e1',fontSize:'.85rem',lineHeight:1.6,margin:'0 0 6px'}}>En la <b>versión gratuita</b> puedes practicar <b>1 tema por día</b>. Ya practicaste el tema de hoy — vuelve mañana para el siguiente.</p>
+            <p style={{color:'#94a3b8',fontSize:'.8rem',lineHeight:1.6,margin:'0 0 16px'}}>¿Quieres practicar <b>los temas que quieras cada día</b>? Contáctanos y desbloqueamos tu cuenta.</p>
+            <a href="mailto:adcerezov@tecmd.edu.co?subject=Quiero desbloquear practica ilimitada en AulaQuest&body=Hola, quiero desbloquear mi cuenta para practicar varios temas por dia." style={{display:'block',background:'linear-gradient(135deg,#f59e0b,#d97706)',color:'#fff',border:'none',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.88rem',cursor:'pointer',textDecoration:'none',marginBottom:8}}>✉️ Contactar a soporte</a>
+            <button onClick={()=>setShowDailyModal(false)} style={{background:'transparent',border:'1px solid rgba(148,163,184,.3)',color:'#94a3b8',padding:'10px',borderRadius:12,fontWeight:600,fontSize:'.82rem',cursor:'pointer',width:'100%'}}>Entendido</button>
+          </div>
+        </div>
+      )}
       {showInterviewModal && (
         <div onClick={()=>setShowInterviewModal(false)} style={{position:'fixed',inset:0,background:'rgba(2,4,10,.8)',backdropFilter:'blur(4px)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:18,fontFamily:"'Poppins',sans-serif"}}>
           <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:420,background:'#0d1117',borderRadius:22,border:'1px solid rgba(99,102,241,.3)',padding:'30px 26px',textAlign:'center',boxShadow:'0 12px 50px rgba(0,0,0,.7)'}}>
@@ -3535,7 +3548,7 @@ const handleAuth = async(e) => {
                   <div key={t.id}
                     onClick={()=>{
                       if (!desbloqBase) { setBubble('🔒 Completa el tema anterior primero para desbloquear este.'); setBubbleType('err'); return; }
-                      if (bloqueadoDiario) { setBubble('🌙 Solo puedes avanzar en un tema por día. ¡Vuelve mañana para continuar!'); setBubbleType('err'); return; }
+                      if (bloqueadoDiario) { setShowDailyModal(true); return; }
                       setTema(activo?null:t); usedWordsRef.current=[]; setWord(null);
                       if (!activo) openCloud(t);
                     }}
