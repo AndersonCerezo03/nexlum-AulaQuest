@@ -2905,18 +2905,12 @@ const handleAuth = async(e) => {
     // Priorizar palabras NO completadas aún en MongoDB
     const completadas = (progTemas[tema?.id]?.palabrasCompletadas) || [];
     const pendientes = uniqueWords.filter(w => !completadas.includes(w.en));
-    if (pendientes.length === 0) {
-      setBubble('🏆 Ya completaste todas las palabras de este tema! Selecciona el siguiente tema desbloqueado.');
-      setBubbleType('ok');
-      setOrbState('thinking');
-      alexSpeak('Felicitaciones! Completaste todas las palabras de este tema. Selecciona el siguiente tema para continuar.', 0.85, ()=>setOrbState('idle'), 'es', ()=>setOrbState('speaking'));
-      return;
-    }
+    // Si ya completó TODAS, sigue pudiendo practicar (repaso con todas las palabras del tema)
+    const base = pendientes.length > 0 ? pendientes : uniqueWords;
     // Evitar repetir en sesión usando ref (siempre actualizado)
-    const sinUsar = pendientes.filter(w => !usedWordsRef.current.includes(w.en));
-    // Si ya usamos todas las pendientes en esta sesión, resetear solo las usadas (no las completadas)
+    const sinUsar = base.filter(w => !usedWordsRef.current.includes(w.en));
     if (sinUsar.length === 0) usedWordsRef.current = [];
-    const pool = sinUsar.length > 0 ? sinUsar : pendientes;
+    const pool = sinUsar.length > 0 ? sinUsar : base;
     const w = pool[0];
     usedWordsRef.current = [...usedWordsRef.current, w.en];
     setWord(w);
@@ -3014,16 +3008,14 @@ const handleAuth = async(e) => {
         } catch {}
         // Avanzar automáticamente
         if (temaCompleto) {
-          // Cerrar el panel de práctica y mostrar el aula con el siguiente desbloqueado
-          setCloudOpen(false);
-          setWord(null);
-          setOrbState('idle');
-          setBubble('🏆 Tema completado! El siguiente tema se desbloqueó.');
+          // Tema completado: se desbloquea el siguiente, PERO no se cierra el panel.
+          // El alumno puede seguir practicando este tema (repaso) si quiere.
+          setOrbState('speaking');
+          setBubble('🏆 ¡Tema completado! Se desbloqueó el siguiente. Puedes seguir practicando o elegir el siguiente tema.');
           setBubbleType('ok');
-          alexSpeak('Felicitaciones! Completaste este tema. El siguiente tema se ha desbloqueado!', 1.0, ()=>{
-            setBubble('🎯 Selecciona el siguiente tema para continuar.');
-            setBubbleType('');
-          }, 'es');
+          alexSpeak('Felicitaciones! Completaste este tema. Se desbloqueó el siguiente. Puedes seguir practicando este tema o elegir el siguiente.', 0.98, ()=>{
+            setOrbState('listening'); setBubble('🎤 Sigue practicando: toca "Nueva palabra" o cierra para elegir otro tema.'); setBubbleType('');
+          }, 'es', ()=>setOrbState('speaking'));
         } else {
           // Pronunció bien la palabra → ahora Mr. Alex le pregunta CÓMO USARLA:
           // reto "completa la frase". Solo avanza si la completa.
