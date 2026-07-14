@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createElement as e } from 'react';
 
-const WA_NUMBER = '573002629795';
+const WA_NUMBER = '573022398289';
 const WA_TEXT = 'Hola Nexlum quiero informacion sobre AulaQuest';
 
 export default function WhatsAppButton() {
