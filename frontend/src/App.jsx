@@ -3788,12 +3788,9 @@ const handleAuth = async(e) => {
               <div onClick={()=>setPractMenu(o=>!o)}
                 onMouseEnter={e=>{ if(!practMenu) e.currentTarget.style.background='rgba(139,92,246,.1)'; }}
                 onMouseLeave={e=>{ if(!practMenu) e.currentTarget.style.background='transparent'; }}
-                style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'5px 10px',borderRadius:50,background:practMenu?'rgba(139,92,246,.14)':'transparent',transition:'background .2s'}}>
-                <span style={{position:'relative',width:24,height:24,flexShrink:0,display:'inline-block'}}>
-                  <span style={{width:24,height:24,borderRadius:'50%',background:'linear-gradient(135deg,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.72rem',boxShadow:'0 0 12px rgba(139,92,246,'+(practMenu?'.75':'.45')+')',transition:'box-shadow .2s'}}>✨</span>
-                  {bellOn && <span title="¡Nuevo repaso desbloqueado!" style={{position:'absolute',top:-5,right:-6,width:14,height:14,borderRadius:'50%',background:'#ef4444',border:'1.5px solid #0a0e1a',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.5rem',boxShadow:'0 0 8px rgba(239,68,68,.7)'}}>🔔</span>}
-                </span>
-                <span style={{fontWeight:700,fontSize:'.78rem',background:'linear-gradient(135deg,#c4b5fd,#f0abfc)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Practicar</span>
+                style={{position:'relative',display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'5px 10px',borderRadius:50,background:practMenu?'rgba(139,92,246,.14)':'transparent',transition:'background .2s'}}>
+                <span style={{fontWeight:700,fontSize:'.78rem',background:'linear-gradient(135deg,#c4b5fd,#f0abfc)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Repaso</span>
+                {bellOn && <span title="¡Nuevo repaso desbloqueado!" style={{position:'absolute',top:-3,right:-2,width:14,height:14,borderRadius:'50%',background:'#ef4444',border:'1.5px solid #0a0e1a',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.5rem',boxShadow:'0 0 8px rgba(239,68,68,.7)'}}>🔔</span>}
                 <span style={{fontSize:'.55rem',color:'#a78bfa',transition:'transform .2s',transform:practMenu?'rotate(180deg)':'none'}}>▼</span>
               </div>
               {practMenu && <div onClick={()=>setPractMenu(false)} style={{position:'fixed',inset:0,zIndex:1999}}/>}
