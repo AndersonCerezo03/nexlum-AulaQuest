@@ -540,11 +540,18 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo }) {
     setBubble('🎬 ' + r.emoji + ' ' + r.titulo + ' — ¡Veamos qué aprendiste!');
     alexSpeak('Veamos qué aprendiste! Primero, una conversación: responde en inglés con oraciones completas usando las palabras del tema.', 0.98, ()=>preguntarRutina(t, 0), 'es', ()=>setOrb('speaking'));
   };
-  // Rutina temática: Mr. Alex pregunta en inglés y el alumno responde con oración completa
+  // Rutina temática: Mr. Alex pregunta en inglés y sugiere HABLANDO palabras que el alumno ya aprendió
   const preguntarRutina = (t, i) => {
     const q = getRutina(t).qs[i];
+    const pool = t.words.filter(w => !usadas.includes(w.en));
+    const ejemplos = [...(pool.length ? pool : t.words)].sort(()=>Math.random()-.5).slice(0,3);
+    const lista = ejemplos.map(w=>w.en).join(', ');
     setBType(''); setOrb('thinking'); setBubble('🗣️ ' + q);
-    alexSpeak(q, 0.88, ()=>{ setOrb('listening'); setBubble('🎤 ' + q + ' — responde con una oración completa.'); }, null, ()=>setOrb('speaking'));
+    alexSpeak(q, 0.88, ()=>{
+      setBubble('🗣️ ' + q + ' — 💡 aprendiste: ' + ejemplos.map(w=>w.en+' ('+w.es+')').join(', '));
+      alexSpeak('You can use words you learned, like: ' + lista + '.', 0.9,
+        ()=>{ setOrb('listening'); setBubble('🎤 ' + q + ' — responde con una oración usando lo que aprendiste.'); }, null, ()=>setOrb('speaking'));
+    }, null, ()=>setOrb('speaking'));
   };
   const procesarRutina = (alts) => {
     if (!tema) return;
@@ -553,12 +560,16 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo }) {
     const r = getRutina(tema);
     if (w) {
       setUsadas(u=>[...u, w.en]); setBType('ok'); setOrb('speaking');
-      setBubble('✅ ¡Muy bien! Usaste "' + w.en + '" (' + w.es + ').');
+      setBubble('✅ ¡Muy bien! Usaste "' + w.en + '" (' + w.es + ') — lo aprendiste y ya lo hablas.');
       const next = rutinaIdx + 1;
       if (next < r.qs.length) {
-        alexSpeak('Excellent! ' + w.en + '!', 0.9, ()=>{ setRutinaIdx(next); preguntarRutina(tema, next); }, null, ()=>setOrb('speaking'));
+        alexSpeak('Excellent! ' + w.en + '!', 0.9, ()=>{
+          alexSpeak('Eso significa ' + w.es + '. ¡Ya hablas con lo que aprendiste!', 0.98, ()=>{ setRutinaIdx(next); preguntarRutina(tema, next); }, 'es', ()=>setOrb('speaking'));
+        }, null, ()=>setOrb('speaking'));
       } else {
-        alexSpeak('Excellent! Now, the words!', 0.9, ()=>{ setModo('palabras'); cargarReto(tema, 0, false); }, null, ()=>setOrb('speaking'));
+        alexSpeak('Excellent! ' + w.en + '!', 0.9, ()=>{
+          alexSpeak('Significa ' + w.es + '. ¡Ahora vamos con las palabras!', 0.98, ()=>{ setModo('palabras'); cargarReto(tema, 0, false); }, 'es', ()=>setOrb('speaking'));
+        }, null, ()=>setOrb('speaking'));
       }
     } else {
       setFails(f=>f+1); setBType('err');
