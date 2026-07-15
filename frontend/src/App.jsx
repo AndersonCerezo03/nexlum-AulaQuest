@@ -3742,12 +3742,11 @@ const handleAuth = async(e) => {
           {(
             <div style={{position:'relative',marginLeft:10}}>
               <div onClick={()=>setPractMenu(o=>!o)}
-                onMouseEnter={e=>{ if(!practMenu) e.currentTarget.style.background='rgba(139,92,246,.1)'; }}
-                onMouseLeave={e=>{ if(!practMenu) e.currentTarget.style.background='transparent'; }}
-                style={{position:'relative',display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'5px 10px',borderRadius:50,background:practMenu?'rgba(139,92,246,.14)':'transparent',transition:'background .2s'}}>
-                <span style={{fontWeight:700,fontSize:'.78rem',background:'linear-gradient(135deg,#c4b5fd,#f0abfc)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Repaso</span>
+                onMouseEnter={e=>{ if(!practMenu) e.currentTarget.style.color='#e2e8f0'; }}
+                onMouseLeave={e=>{ if(!practMenu) e.currentTarget.style.color='#94a3b8'; }}
+                style={{position:'relative',color:practMenu?'#e2e8f0':'#94a3b8',fontSize:'.78rem',padding:'5px 10px',cursor:'pointer',borderRadius:7,transition:'all .2s'}}>
+                Repaso
                 {bellOn && <span title="¡Nuevo repaso desbloqueado!" style={{position:'absolute',top:-3,right:-2,width:14,height:14,borderRadius:'50%',background:'#ef4444',border:'1.5px solid #0a0e1a',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.5rem',boxShadow:'0 0 8px rgba(239,68,68,.7)'}}>🔔</span>}
-                <span style={{fontSize:'.55rem',color:'#a78bfa',transition:'transform .2s',transform:practMenu?'rotate(180deg)':'none'}}>▼</span>
               </div>
               {practMenu && <div onClick={()=>setPractMenu(false)} style={{position:'fixed',inset:0,zIndex:1999}}/>}
               {practMenu && (
@@ -3805,7 +3804,6 @@ const handleAuth = async(e) => {
                 <div style={{fontSize:'.75rem',fontWeight:600,color:'#e2e8f0'}}>{(user?.name||'').split(' ')[0]}</div>
                 <div style={{fontSize:'.62rem',color:'#64748b'}}>{xp} XP</div>
               </div>
-              <span style={{fontSize:'.55rem',color:'#a5b4fc',marginLeft:2,transition:'transform .2s',transform:userMenu2?'rotate(180deg)':'none'}}>▼</span>
             </div>
             {userMenu2 && <div onClick={()=>setUserMenu2(false)} style={{position:'fixed',inset:0,zIndex:1999}}/>}
             {userMenu2 && (
