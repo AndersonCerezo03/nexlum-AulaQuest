@@ -3653,6 +3653,37 @@ const handleAuth = async(e) => {
           </div>
         </div>
       )}
+      {showMaterial && nivel==='A1' && (
+        <div onClick={()=>setShowMaterial(false)} style={{position:'fixed',inset:0,zIndex:9400,background:'rgba(2,6,23,.85)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,fontFamily:"'Poppins',sans-serif"}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:520,background:'rgba(17,22,38,.85)',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(255,255,255,.09)',borderRadius:22,padding:'1.4rem',boxShadow:'0 30px 80px rgba(0,0,0,.6)',position:'relative',maxHeight:'90vh',overflowY:'auto',boxSizing:'border-box'}}>
+            <button onClick={()=>setShowMaterial(false)} style={{position:'absolute',top:14,right:14,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#ef4444',width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:12}}>✕</button>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
+              <div style={{width:44,height:44,borderRadius:13,background:'linear-gradient(135deg,#10b981,#06b6d4)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.3rem',boxShadow:'0 4px 16px rgba(16,185,129,.35)'}}>📚</div>
+              <div>
+                <div style={{fontSize:'1rem',fontWeight:800,color:'#f1f5f9'}}>Material de apoyo</div>
+                <div style={{fontSize:'.7rem',color:'#94a3b8'}}>Ingles {nivel} · 4 recursos descargables en PDF</div>
+              </div>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10}}>
+              {[
+                { ic:'📘', t:'Guía de gramática '+nivel,      d:'Reglas clave del nivel '+nivel, url:'/material/AulaQuest_Guia_Gramatica_'+nivel+'.pdf' },
+                { ic:'📋', t:'Vocabulario '+nivel+' completo', d:'Todas las palabras con traducción', url:'/material/AulaQuest_Vocabulario_'+nivel+'_Completo.pdf' },
+                { ic:'✏️', t:'Hojas de ejercicios',            d:'Práctica imprimible por tema', url:'/material/AulaQuest_Hojas_de_Ejercicios_'+nivel+'.pdf' },
+                { ic:'🔊', t:'Guía de pronunciación',          d:'Sonidos del inglés con audio', url:'/material/AulaQuest_Guia_Pronunciacion.pdf' },
+              ].map((m,i)=>(
+                <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" download
+                  onMouseEnter={e=>e.currentTarget.style.borderColor='rgba(16,185,129,.5)'} onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,.09)'}
+                  style={{display:'block',textDecoration:'none',background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.09)',borderRadius:14,padding:14,transition:'border-color .15s'}}>
+                  <div style={{fontSize:'1.6rem',lineHeight:1}}>{m.ic}</div>
+                  <div style={{color:'#e2e8f0',fontSize:'.78rem',fontWeight:600,marginTop:8}}>{m.t}</div>
+                  <div style={{color:'#64748b',fontSize:'.7rem',marginTop:3,lineHeight:1.5}}>{m.d}</div>
+                  <div style={{color:'#34d399',fontSize:'.7rem',marginTop:10,fontWeight:600}}>⬇ Descargar PDF</div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {comidaOpen && <ComidaAlex token={token} learned={learnedWords} onClose={()=>setComidaOpen(false)}/>}
       {repasoOpen && <RepasoAlex token={token} temas={temasCompletos} onClose={()=>setRepasoOpen(false)}/>}
       <div className="aq-bar" style={{background:'rgba(10,14,26,.45)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.8rem',borderBottom:'1px solid rgba(255,255,255,0.06)',position:'sticky',top:0,zIndex:100}}>
@@ -3705,25 +3736,19 @@ const handleAuth = async(e) => {
           ) : (
             <span style={{color:'#e2e8f0',fontSize:'.78rem',padding:'5px 12px',borderRadius:7,background:'rgba(99,102,241,0.12)',border:'1px solid rgba(99,102,241,.3)',fontWeight:600}}>Ingles {nivel}</span>
           )}
-          {user?.role==='admin' && (<>
-            <span style={{color:'#334155',fontSize:'.78rem'}}>|</span>
-            <span onClick={()=>setScreen2('admin')} style={{color:'#f59e0b',fontSize:'.78rem',padding:'5px 12px',cursor:'pointer',borderRadius:7,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.3)',fontWeight:700,display:'flex',alignItems:'center',gap:5}}>
-              🛡️ Admin
-            </span>
-          </>)}
-        </div>
-        <div style={{display:'flex',alignItems:'center',gap:8}}>
           {nivel==='A1' && (
-            <div style={{position:'relative'}}>
+            <div style={{position:'relative',marginLeft:10}}>
               <div onClick={()=>setPractMenu(o=>!o)}
-                style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'4px 6px',borderRadius:12,transition:'all .2s'}}>
-                <span style={{width:26,height:26,borderRadius:'50%',background:'linear-gradient(135deg,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.78rem',boxShadow:'0 0 12px rgba(139,92,246,'+(practMenu?'.7':'.45')+')'}}>✨</span>
+                onMouseEnter={e=>{ if(!practMenu) e.currentTarget.style.background='rgba(139,92,246,.1)'; }}
+                onMouseLeave={e=>{ if(!practMenu) e.currentTarget.style.background='transparent'; }}
+                style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'5px 10px',borderRadius:50,background:practMenu?'rgba(139,92,246,.14)':'transparent',transition:'background .2s'}}>
+                <span style={{width:24,height:24,borderRadius:'50%',background:'linear-gradient(135deg,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.72rem',boxShadow:'0 0 12px rgba(139,92,246,'+(practMenu?'.75':'.45')+')',transition:'box-shadow .2s'}}>✨</span>
                 <span style={{fontWeight:700,fontSize:'.78rem',background:'linear-gradient(135deg,#c4b5fd,#f0abfc)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Practicar</span>
                 <span style={{fontSize:'.55rem',color:'#a78bfa',transition:'transform .2s',transform:practMenu?'rotate(180deg)':'none'}}>▼</span>
               </div>
               {practMenu && <div onClick={()=>setPractMenu(false)} style={{position:'fixed',inset:0,zIndex:1999}}/>}
               {practMenu && (
-                <div style={{position:'absolute',top:'calc(100% + 12px)',right:0,minWidth:256,background:'rgba(17,22,38,.72)',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(255,255,255,.09)',borderRadius:18,padding:8,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.6)'}}>
+                <div style={{position:'absolute',top:'calc(100% + 12px)',left:'50%',transform:'translateX(-50%)',minWidth:256,background:'rgba(17,22,38,.72)',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(255,255,255,.09)',borderRadius:18,padding:8,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.6)'}}>
                   <div style={{fontSize:'.6rem',color:'#64748b',fontWeight:700,letterSpacing:'.08em',padding:'6px 10px 8px'}}>PRÁCTICA CON MR. ALEX</div>
                   <div onClick={()=>{ setPractMenu(false); setComidaOpen(true); }}
                     onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
@@ -3741,7 +3766,7 @@ const handleAuth = async(e) => {
                   </div>
                   <div style={{height:1,background:'rgba(255,255,255,.07)',margin:'6px 8px'}}/>
                   <div style={{fontSize:'.6rem',color:'#64748b',fontWeight:700,letterSpacing:'.08em',padding:'6px 10px 8px'}}>RECURSOS</div>
-                  <div onClick={()=>{ setPractMenu(false); setShowMaterial(true); setTimeout(()=>{ document.getElementById('material-apoyo')?.scrollIntoView({behavior:'smooth',block:'center'}); },120); }}
+                  <div onClick={()=>{ setPractMenu(false); setShowMaterial(true); }}
                     onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
                     style={{display:'flex',alignItems:'center',gap:11,padding:10,borderRadius:12,cursor:'pointer',transition:'background .12s'}}>
                     <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#10b981,#06b6d4)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem'}}>📚</div>
@@ -3752,10 +3777,19 @@ const handleAuth = async(e) => {
               )}
             </div>
           )}
-          <div style={{background:'rgba(16,185,129,.15)',border:'1px solid rgba(16,185,129,.35)',color:'#10b981',padding:'3px 10px',borderRadius:50,fontSize:'.7rem',fontWeight:700}}>{nivel}</div>
+          {user?.role==='admin' && (<>
+            <span style={{color:'#334155',fontSize:'.78rem'}}>|</span>
+            <span onClick={()=>setScreen2('admin')} style={{color:'#f59e0b',fontSize:'.78rem',padding:'5px 12px',cursor:'pointer',borderRadius:7,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.3)',fontWeight:700,display:'flex',alignItems:'center',gap:5}}>
+              🛡️ Admin
+            </span>
+          </>)}
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
           <div style={{position:'relative'}}>
             <div onClick={()=>setUserMenu2(o=>!o)}
-              style={{display:'flex',alignItems:'center',gap:8,background:'transparent',border:'none',padding:'4px 6px',borderRadius:12,cursor:'pointer',transition:'all .2s'}}>
+              onMouseEnter={e=>{ if(!userMenu2) e.currentTarget.style.background='rgba(139,92,246,.1)'; }}
+              onMouseLeave={e=>{ if(!userMenu2) e.currentTarget.style.background='transparent'; }}
+              style={{display:'flex',alignItems:'center',gap:8,background:userMenu2?'rgba(139,92,246,.14)':'transparent',border:'none',padding:'4px 10px 4px 6px',borderRadius:50,cursor:'pointer',transition:'background .2s'}}>
               <div style={{width:30,height:30,borderRadius:'50%',background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.68rem',fontWeight:800,color:'#fff',boxShadow:'0 0 0 2px rgba(139,92,246,'+(userMenu2?'.6':'.25')+')',transition:'box-shadow .2s'}}>
                 {inic(user?.name)}
               </div>
@@ -4238,8 +4272,8 @@ const handleAuth = async(e) => {
         </div>
         </div>
 
-        {/* ── Material de apoyo (PDFs) — en todas las aulas ────────────── */}
-        {(()=>{
+        {/* ── Material de apoyo (PDFs) — A2 a C2; en A1 vive en el select ✨ Practicar ── */}
+        {nivel!=='A1' && (()=>{
           // Los PDFs siguen la convención /material/AulaQuest_<tipo>_<nivel>.pdf
           const cards = [
             { ic:'📘', t:'Guía de gramática '+nivel,       d:'Reglas clave del nivel '+nivel, url:'/material/AulaQuest_Guia_Gramatica_'+nivel+'.pdf' },
