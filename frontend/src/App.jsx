@@ -595,7 +595,7 @@ function ComidaAlex({ token, learned, onClose }) {
 /* ── ✨ Practicar (A1): "Repaso de los temas aprendidos" ──
    Cada tema completado desbloquea su repaso. Formato por palabra:
    1) elegir la oración correcta  2) pronunciarla. Si falla → "Así no" + enseñanza con calma. */
-function RepasoAlex({ token, temas, onClose }) {
+function RepasoAlex({ token, temas, onClose, autoTema, titulo }) {
   const [tema, setTema]           = useState(null);   // {id,name,icon,words,completo}
   const [idx, setIdx]             = useState(0);
   const [reto, setReto]           = useState(null);   // {prompt,promptEs,opts,ans,explic,word,sentences}
@@ -645,6 +645,7 @@ function RepasoAlex({ token, temas, onClose }) {
     else { setIdx(next); terminar(t); }
   };
   const saltar = () => { if (!tema || fin) return; stopAlex(); avanzar(tema, idx); };
+  useEffect(()=>{ if (autoTema) empezarTema(autoTema); },[]);   // "Todos los temas": entra directo sin lista
 
   // Fase 1: seleccionar la oración correcta. Si falla → "Así no" + explicación con calma.
   const elegir = (i) => {
@@ -708,7 +709,7 @@ function RepasoAlex({ token, temas, onClose }) {
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
           <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
             <span style={{fontSize:'.8rem',fontWeight:700,color:'#6366f1',letterSpacing:'.08em'}}>MR. ALEX</span>
-            <span style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>🧠 Repaso de los temas aprendidos</span>
+            <span style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>{titulo || '🧠 Repaso de los temas aprendidos'}</span>
             {tema && !fin && <span style={{background:'rgba(16,185,129,.15)',color:'#34d399',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>{Math.min(idx+1, tema.words.length)}/{tema.words.length}</span>}
           </div>
           <button onClick={cerrar} style={{background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#ef4444',width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:12}}>✕</button>
@@ -776,7 +777,7 @@ function RepasoAlex({ token, temas, onClose }) {
             )}
             {fin ? (
               <div style={{display:'flex',gap:8}}>
-                <button onClick={()=>{ setTema(null); setReto(null); setBubble(''); setBType(''); setOrb('idle'); }} style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.14)',color:'#e2e8f0',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.82rem',cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Otro tema 🧠</button>
+                {!autoTema && <button onClick={()=>{ setTema(null); setReto(null); setBubble(''); setBType(''); setOrb('idle'); }} style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.14)',color:'#e2e8f0',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.82rem',cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Otro tema 🧠</button>}
                 <button onClick={cerrar} style={{flex:1,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.82rem',cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Terminar 🏆</button>
               </div>
             ) : (
@@ -2968,7 +2969,8 @@ export default function App() {
   const [showMaterial,       setShowMaterial]       = useState(false); // panel de material de apoyo (PDFs)
   const [practMenu,          setPractMenu]          = useState(false); // select ✨ Practicar (solo A1)
   const [comidaOpen,         setComidaOpen]         = useState(false); // práctica "Hora de comer"
-  const [repasoOpen,         setRepasoOpen]         = useState(false); // "Repaso hablado"
+  const [repasoOpen,         setRepasoOpen]         = useState(false); // "Repaso de los temas aprendidos"
+  const [todosOpen,          setTodosOpen]          = useState(false); // "Todos los temas" (todo lo aprendido)
   const nivel = (esAdmin && adminVistaNivel) ? adminVistaNivel : (user?.englishLevel || 'A1');
   const [TOPICS,      setTOPICS]      = useState([]);
   const [vw,          setVw]          = useState(typeof window!=='undefined'?window.innerWidth:1200); // ancho para el panal responsive
@@ -3450,6 +3452,12 @@ const handleAuth = async(e) => {
   });
   const temasRepaso = TOPICS.filter(t => (vocabData[t.id]||[]).length > 0)
     .map(t => ({ id:t.id, name:t.name, icon:t.icon, words: vocabData[t.id]||[], completo: !!progTemas[t.id]?.completo }));
+  // "Hora de comer" se desbloquea al completar el tema de comida; "Todos los temas" al completar TODAS las lecciones
+  const temaComidaCompleto  = esAdmin || TOPICS.some(t => /comida|bebida|food/i.test(t.name||'') && progTemas[t.id]?.completo);
+  const todosTemasCompletos = esAdmin || (TOPICS.length > 0 && TOPICS.every(t => progTemas[t.id]?.completo));
+  const temaTodos = (()=>{ const seen = new Set(); return { id:'__todos', name:'Todos los temas', icon:'🌟', completo:true,
+    words: TOPICS.flatMap(t => vocabData[t.id]||[]).filter(w => { if (seen.has(w.en)) return false; seen.add(w.en); return true; }) }; })();
+  let bellOn = false; try { bellOn = todosTemasCompletos && localStorage.getItem('aq_bell_todos_'+nivel) !== '1'; } catch {}
 
   if (screen2==='quiz') return (
     <LevelQuiz
@@ -3724,6 +3732,7 @@ const handleAuth = async(e) => {
       )}
       {comidaOpen && <ComidaAlex token={token} learned={learnedWords} onClose={()=>setComidaOpen(false)}/>}
       {repasoOpen && <RepasoAlex token={token} temas={temasRepaso} onClose={()=>setRepasoOpen(false)}/>}
+      {todosOpen && <RepasoAlex token={token} temas={[temaTodos]} autoTema={temaTodos} titulo="🌟 Todos los temas" onClose={()=>setTodosOpen(false)}/>}
       <div className="aq-bar" style={{background:'rgba(10,14,26,.45)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.8rem',borderBottom:'1px solid rgba(255,255,255,0.06)',position:'sticky',top:0,zIndex:100}}>
         <div style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}} onClick={()=>setScreen('home')}>
           <div style={{width:34,height:34,background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.95rem',boxShadow:'0 0 16px rgba(99,102,241,.4)'}}>🎓</div>
@@ -3780,7 +3789,10 @@ const handleAuth = async(e) => {
                 onMouseEnter={e=>{ if(!practMenu) e.currentTarget.style.background='rgba(139,92,246,.1)'; }}
                 onMouseLeave={e=>{ if(!practMenu) e.currentTarget.style.background='transparent'; }}
                 style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'5px 10px',borderRadius:50,background:practMenu?'rgba(139,92,246,.14)':'transparent',transition:'background .2s'}}>
-                <span style={{width:24,height:24,borderRadius:'50%',background:'linear-gradient(135deg,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.72rem',boxShadow:'0 0 12px rgba(139,92,246,'+(practMenu?'.75':'.45')+')',transition:'box-shadow .2s'}}>✨</span>
+                <span style={{position:'relative',width:24,height:24,flexShrink:0,display:'inline-block'}}>
+                  <span style={{width:24,height:24,borderRadius:'50%',background:'linear-gradient(135deg,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.72rem',boxShadow:'0 0 12px rgba(139,92,246,'+(practMenu?'.75':'.45')+')',transition:'box-shadow .2s'}}>✨</span>
+                  {bellOn && <span title="¡Nuevo repaso desbloqueado!" style={{position:'absolute',top:-5,right:-6,width:14,height:14,borderRadius:'50%',background:'#ef4444',border:'1.5px solid #0a0e1a',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.5rem',boxShadow:'0 0 8px rgba(239,68,68,.7)'}}>🔔</span>}
+                </span>
                 <span style={{fontWeight:700,fontSize:'.78rem',background:'linear-gradient(135deg,#c4b5fd,#f0abfc)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Practicar</span>
                 <span style={{fontSize:'.55rem',color:'#a78bfa',transition:'transform .2s',transform:practMenu?'rotate(180deg)':'none'}}>▼</span>
               </div>
@@ -3788,12 +3800,12 @@ const handleAuth = async(e) => {
               {practMenu && (
                 <div style={{position:'absolute',top:'calc(100% + 12px)',left:'50%',transform:'translateX(-50%)',minWidth:256,background:'linear-gradient(180deg,rgba(24,29,49,.99),rgba(13,17,28,.99))',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(139,92,246,.28)',borderRadius:18,padding:8,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.75), 0 0 0 1px rgba(139,92,246,.08), 0 0 40px rgba(99,102,241,.12)'}}>
                   <div style={{fontSize:'.6rem',color:'#64748b',fontWeight:700,letterSpacing:'.08em',padding:'6px 10px 8px'}}>PRÁCTICA CON MR. ALEX</div>
-                  <div onClick={()=>{ setPractMenu(false); setComidaOpen(true); }}
-                    onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
-                    style={{display:'flex',alignItems:'center',gap:11,padding:10,borderRadius:12,cursor:'pointer',transition:'background .12s'}}>
+                  <div onClick={()=>{ if(!temaComidaCompleto) return; setPractMenu(false); setComidaOpen(true); }}
+                    onMouseEnter={e=>{ if(temaComidaCompleto) e.currentTarget.style.background='rgba(255,255,255,.06)'; }} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
+                    style={{display:'flex',alignItems:'center',gap:11,padding:10,borderRadius:12,cursor:temaComidaCompleto?'pointer':'not-allowed',transition:'background .12s',opacity:temaComidaCompleto?1:.55}}>
                     <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#06b6d4,#3b82f6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem'}}>🍽️</div>
-                    <div style={{flex:1}}><div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9'}}>Hora de comer</div><div style={{fontSize:'.65rem',color:'#94a3b8'}}>Conversa en cada comida</div></div>
-                    <span style={{color:'#475569',fontSize:'.8rem'}}>›</span>
+                    <div style={{flex:1}}><div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9'}}>Hora de comer</div><div style={{fontSize:'.65rem',color:'#94a3b8'}}>{temaComidaCompleto?'Conversa en cada comida':'🔒 Se desbloquea con el tema de comida'}</div></div>
+                    <span style={{color:'#475569',fontSize:'.8rem'}}>{temaComidaCompleto?'›':'🔒'}</span>
                   </div>
                   <div onClick={()=>{ setPractMenu(false); setRepasoOpen(true); }}
                     onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
@@ -3801,6 +3813,18 @@ const handleAuth = async(e) => {
                     <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem'}}>🧠</div>
                     <div style={{flex:1}}><div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9'}}>Repaso de temas aprendidos</div><div style={{fontSize:'.65rem',color:'#94a3b8'}}>Solo lo que ya aprendiste</div></div>
                     <span style={{color:'#475569',fontSize:'.8rem'}}>›</span>
+                  </div>
+                  <div onClick={()=>{ if(!todosTemasCompletos) return; try{localStorage.setItem('aq_bell_todos_'+nivel,'1');}catch(e){} setPractMenu(false); setTodosOpen(true); }}
+                    onMouseEnter={e=>{ if(todosTemasCompletos) e.currentTarget.style.background='rgba(255,255,255,.06)'; }} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
+                    style={{display:'flex',alignItems:'center',gap:11,padding:10,borderRadius:12,cursor:todosTemasCompletos?'pointer':'not-allowed',transition:'background .12s',opacity:todosTemasCompletos?1:.55}}>
+                    <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#f59e0b,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',position:'relative'}}>🌟
+                      {bellOn && <span style={{position:'absolute',top:-4,right:-4,width:14,height:14,borderRadius:'50%',background:'#ef4444',border:'1.5px solid #0a0e1a',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.5rem',boxShadow:'0 0 8px rgba(239,68,68,.7)'}}>🔔</span>}
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9',display:'flex',alignItems:'center',gap:6}}>Todos los temas{bellOn && <span style={{fontSize:'.52rem',color:'#fff',background:'#ef4444',borderRadius:20,padding:'1px 7px',fontWeight:800}}>NUEVO</span>}</div>
+                      <div style={{fontSize:'.65rem',color:'#94a3b8'}}>{todosTemasCompletos?'Todo lo aprendido en un solo repaso':'🔒 Se desbloquea al completar todas las lecciones'}</div>
+                    </div>
+                    <span style={{color:'#475569',fontSize:'.8rem'}}>{todosTemasCompletos?'›':'🔒'}</span>
                   </div>
                   <div style={{height:1,background:'rgba(255,255,255,.07)',margin:'6px 8px'}}/>
                   <div style={{fontSize:'.6rem',color:'#64748b',fontWeight:700,letterSpacing:'.08em',padding:'6px 10px 8px'}}>RECURSOS</div>
