@@ -432,26 +432,52 @@ function MenuItem({ icon, label, onClick, danger }) {
 /* ── Rutinas temáticas del Repaso: cada tema tiene su escena de conversación con Mr. Alex ──
    (el de comida es "Hora de comer"; los demás siguen la misma idea, cada uno con su ambiente) */
 const RUTINAS_REPASO = [
-  { re:/greeting|salud/i,               emoji:'👋', titulo:'Rutina de saludos',   qs:['Good morning! How do you greet me?','A friend is leaving. Say goodbye to him!','It is night time. Greet me!'] },
+  // (el orden importa: patrones específicos antes que los generales)
+  { re:/salud y|s[ií]ntoma|health|medicin|estilo de vida/i, emoji:'🏥', titulo:'En el doctor', qs:['How do you feel today?','You are sick: tell the doctor one symptom.','Give me one health tip in English!'] },
+  { re:/greeting|saludo|despedid/i,     emoji:'👋', titulo:'Rutina de saludos',   qs:['Good morning! How do you greet me?','A friend is leaving. Say goodbye to him!','It is night time. Greet me!'] },
   { re:/verb_tobe|to be/i,              emoji:'🤖', titulo:'Yo soy, tú eres',     qs:['Talk about yourself: say a sentence with "I am".','Talk about a friend: say a sentence with "he is" or "she is".','Now say a sentence with "we are" or "you are".'] },
+  { re:/phrasal/i,                      emoji:'🧲', titulo:'Phrasal power',       qs:['Use a phrasal verb about your morning!','Say a phrasal verb and its meaning!','One more phrasal verb in a sentence!'] },
+  { re:/pasado|\bpast\b/i,              emoji:'⏪', titulo:'Viaje al pasado',     qs:['What did you do yesterday? Use the past!','Where did you go last weekend?','Tell me one more thing you did!'] },
+  { re:/condicional|subjuntivo/i,       emoji:'🔮', titulo:'Y si…',               qs:['Complete: if I had a million dollars…','What would you do with more free time?','Make one more sentence with "if"!'] },
   { re:/number|n[uú]mer/i,              emoji:'🔢', titulo:'Rutina de números',   qs:['How old are you? Answer with a number in English.','Count! Say a number you like.','Say one more number, a big one!'] },
   { re:/color/i,                        emoji:'🎨', titulo:'Mundo de colores',    qs:['What color do you see right now?','What is your favorite color?','Tell me one more color in English!'] },
   { re:/family|famili/i,                emoji:'👨‍👩‍👧', titulo:'Mi familia',      qs:['Who lives with you? Say one family member.','Say another family member you love.','Who is the oldest in your family? Use a family word.'] },
-  { re:/food|comida|bebida|drink/i,     emoji:'🍽️', titulo:'Hora de comer',       qs:["Good morning! What do you want for breakfast?","It's lunch time! What do you eat for lunch?","Good evening! What's for dinner tonight?"] },
+  { re:/food|comida|bebida|drink|restaurante/i, emoji:'🍽️', titulo:'Hora de comer', qs:["Good morning! What do you want for breakfast?","It's lunch time! What do you eat for lunch?","Good evening! What's for dinner tonight?"] },
   { re:/body|cuerpo/i,                  emoji:'🧍', titulo:'Rutina del cuerpo',   qs:['Touch your head! Now say a body part in English.','What do you use to walk? Say it in English.','Tell me one more body part!'] },
+  { re:/rutina diaria|daily/i,          emoji:'🌅', titulo:'Mi día a día',        qs:['What do you do in the morning?','What do you do after lunch?','Tell me one thing you do at night!'] },
+  { re:/compra|shopping/i,              emoji:'🛍️', titulo:'De compras',          qs:['You are in a store: what do you want to buy?','Ask the price of something!','Say one more shopping word!'] },
+  { re:/hobbie|tiempo libre|deporte|sport/i, emoji:'⚽', titulo:'Tu tiempo libre', qs:['What do you do in your free time?','What sport or hobby do you like?','Tell me one more activity you enjoy!'] },
+  { re:/emocion|sentimiento|animo/i,    emoji:'💛', titulo:'Cómo te sientes',     qs:['How do you feel right now?','What makes you happy?','Say one more emotion in English!'] },
   { re:/animal/i,                       emoji:'🐾', titulo:'Safari de animales',  qs:['What is your favorite animal?','Say an animal that lives in a house.','Now tell me a BIG animal!'] },
-  { re:/object|hogar|casa|home/i,       emoji:'🏠', titulo:'Tour por tu casa',    qs:['Look around! Say one thing in your house.','What do you use to sleep? Say it in English.','Tell me one more thing from your home!'] },
+  { re:/ambiente|natur|sostenib|desastre/i, emoji:'🌿', titulo:'Planeta verde',   qs:['Say something you see in nature.','How can we help the planet? One idea!','Tell me one more nature word!'] },
+  { re:/object|hogar|casa|home|vivienda/i, emoji:'🏠', titulo:'Tour por tu casa', qs:['Look around! Say one thing in your house.','What do you use to sleep? Say it in English.','Tell me one more thing from your home!'] },
+  { re:/viaje|vacacion|turismo/i,       emoji:'✈️', titulo:'Aventura de viaje',   qs:['Where do you want to travel?','What do you pack in your suitcase?','Tell me one more travel word!'] },
+  { re:/medios|critica|publicidad/i,    emoji:'📺', titulo:'En los medios',       qs:['What news did you see today?','Do you trust advertising? Tell me!','Say one more media word!'] },
+  { re:/tecnolog|internet/i,            emoji:'💻', titulo:'Mundo digital',       qs:['What technology do you use every day?','What do you do on the internet?','Say one more tech word!'] },
+  { re:/opinion|debate|argument/i,      emoji:'🗣️', titulo:'Tu opinión cuenta',   qs:['Give me your opinion: is English easy?','Do you agree or disagree? Tell me why!','Convince me of something in one sentence!'] },
+  { re:/dinero|finanza|econom/i,        emoji:'💰', titulo:'Hablemos de dinero',  qs:['What do you save money for?','What was the last thing you bought?','Say one more money word!'] },
+  { re:/negocio|business|laboral/i,     emoji:'💼', titulo:'Modo profesional',    qs:['Describe your dream job!','You are in a meeting: introduce yourself!','Say one more business word!'] },
+  { re:/presentacion|discurso|negociacion|persuasion|retoric|diplomacia|eufemismo/i, emoji:'🎤', titulo:'Voz de líder', qs:['Start a presentation: greet your audience!','Convince me with a strong argument!','Close your speech with power!'] },
+  { re:/job|profesi|trabajo|carrera/i,  emoji:'👷', titulo:'¿Qué quieres ser?',   qs:['What do you want to be? Say a job in English.','Who teaches at school? Say the job.','Tell me one more profession!'] },
+  { re:/narrar|historia|literari|literatur|arte/i, emoji:'📖', titulo:'Cuenta la historia', qs:['Start a story: "one day…"','What happened next? Continue!','Give your story an ending!'] },
+  { re:/crimen|justicia|derecho|legal|politic|burocrat/i, emoji:'⚖️', titulo:'Ley y orden', qs:['What is one law everyone knows?','What happens if you break a rule?','Say one more legal word!'] },
+  { re:/ciencia|investigacion|psicolog|filosof|etica/i, emoji:'🔬', titulo:'Mente curiosa', qs:['Ask a big question about life!','What science topic interests you?','Share one deep idea in English!'] },
+  { re:/escritura|academic|correspondencia|formal/i, emoji:'✍️', titulo:'Pluma experta', qs:['Start a formal letter: "dear…"','Say one formal sentence out loud!','Say one more formal expression!'] },
+  { re:/sociedad|urbana|global|cultura|tradicion|intercultural|relacion|social/i, emoji:'🌍', titulo:'Mundo y sociedad', qs:['What tradition do you love?','Describe your community in one sentence!','Say one more culture word!'] },
+  { re:/modismo|idiom|expresi|refran|proverbio|humor|juego|binomio|coloquial|nativo|matiz|sutil|falsos|britanic|american|espontane|habla/i, emoji:'🎭', titulo:'Como un nativo', qs:['Use an expression like a native!','Say something funny in English!','Teach me one more expression!'] },
+  { re:/pronunciaci/i,                  emoji:'🔊', titulo:'Reto de sonidos',     qs:['Say a difficult word in English!','Repeat it slowly, then fast!','One more hard word, you can do it!'] },
+  { re:/vocabulario|precision|maestria|dominio/i, emoji:'🏆', titulo:'Dominio total', qs:['Use an advanced word in a sentence!','Say something with total precision!','One more master-level word!'] },
   { re:/verb/i,                         emoji:'⚡', titulo:'Verbos en acción',    qs:['What do you do every day? Use a verb!','What am I doing right now? Guess with a verb!','Tell me one more action in English!'] },
-  { re:/adjective|adjetiv/i,            emoji:'✨', titulo:'Describe tu mundo',   qs:['Describe your house with one word!','How are you today? Use an adjective.','Say one more describing word, an opposite!'] },
-  { re:/preposition|preposici|conector/i, emoji:'📍', titulo:'¿Dónde está?',      qs:['Where is your phone? Use a position word.','Where is the sky? Answer in English!','Say one more position or connector word!'] },
-  { re:/grammar|gramatic|estructur/i,   emoji:'🧩', titulo:'Arma la frase',       qs:['Make a sentence with "I have".','Ask me a question: "do you...?"','Say a sentence with "there is" or "there are".'] },
+  { re:/adjective|adjetiv|descri|personalidad|caracter/i, emoji:'✨', titulo:'Describe tu mundo', qs:['Describe your house with one word!','How are you today? Use an adjective.','Say one more describing word, an opposite!'] },
+  { re:/preposition|preposici/i,        emoji:'📍', titulo:'¿Dónde está?',        qs:['Where is your phone? Use a position word.','Where is the sky? Answer in English!','Say one more position word!'] },
+  { re:/grammar|gramatic|estructur|voz pasiva|conector|colocacion|reporte|formacion|comparativ|superlativ|continuo|indirecto|deduccion/i, emoji:'🧩', titulo:'Arma la frase', qs:['Make a sentence with "I have".','Ask me a question: "do you…?"','Say a sentence with "there is" or "there are".'] },
   { re:/days_months|d[ií]as|mes|month|day|week/i, emoji:'📅', titulo:'Tu calendario', qs:['What day is today?','What is your favorite month?','Say one more day or month in English!'] },
   { re:/\btime\b|la hora|reloj|clock/i, emoji:'⏰', titulo:'¿Qué hora es?',       qs:['What time do you wake up?','What time do you eat dinner?','Say one more time expression!'] },
   { re:/weather|clima/i,                emoji:'🌦️', titulo:'El clima de hoy',     qs:['How is the weather today?','What weather do you like?','Tell me one more weather word!'] },
   { re:/clothes|ropa/i,                 emoji:'👕', titulo:'Elige tu ropa',       qs:['What are you wearing today? Say one piece.','What do you wear when it is cold?','Tell me one more piece of clothing!'] },
-  { re:/job|profesi|trabajo/i,          emoji:'👷', titulo:'¿Qué quieres ser?',   qs:['What do you want to be? Say a job in English.','Who teaches at school? Say the job.','Tell me one more profession!'] },
+  { re:/school|escuela|educacion|estudio|aprendiz/i, emoji:'🎒', titulo:'En la escuela', qs:['What do you take to school? Say one thing.','What do you use to write?','Tell me one more school word!'] },
   { re:/place|lugar|ciudad|city/i,      emoji:'🏙️', titulo:'Por la ciudad',       qs:['Where do you buy food? Say the place.','Where do you go when you are sick?','Tell me one more place in the city!'] },
-  { re:/transport/i,                    emoji:'🚗', titulo:'De viaje',            qs:['How do you go to school or work?','Say a transport that flies!','Tell me one more way to travel!'] },
+  { re:/transport|direccion/i,          emoji:'🚗', titulo:'De viaje',            qs:['How do you go to school or work?','Say a transport that flies!','Tell me one more way to travel!'] },
   { re:/phrase|frase/i,                 emoji:'💬', titulo:'Frases mágicas',      qs:['Someone helps you. What do you say?','You need help. Ask politely in English!','Say one more useful phrase!'] },
 ];
 function getRutina(t) {
@@ -3619,7 +3645,7 @@ const handleAuth = async(e) => {
           </div>
         </div>
       )}
-      {showMaterial && nivel==='A1' && (
+      {showMaterial && (
         <div onClick={()=>setShowMaterial(false)} style={{position:'fixed',inset:0,zIndex:9400,background:'rgba(2,6,23,.85)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,fontFamily:"'Poppins',sans-serif"}}>
           <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:520,background:'linear-gradient(180deg,rgba(24,29,49,.99),rgba(13,17,28,.99))',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(255,255,255,.09)',borderRadius:22,padding:'1.4rem',boxShadow:'0 30px 80px rgba(0,0,0,.6)',position:'relative',maxHeight:'90vh',overflowY:'auto',boxSizing:'border-box'}}>
             <button onClick={()=>setShowMaterial(false)} style={{position:'absolute',top:14,right:14,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#ef4444',width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:12}}>✕</button>
@@ -3702,7 +3728,7 @@ const handleAuth = async(e) => {
           ) : (
             <span style={{color:'#e2e8f0',fontSize:'.78rem',padding:'5px 12px',borderRadius:7,background:'rgba(99,102,241,0.12)',border:'1px solid rgba(99,102,241,.3)',fontWeight:600}}>Ingles {nivel}</span>
           )}
-          {nivel==='A1' && (
+          {(
             <div style={{position:'relative',marginLeft:10}}>
               <div onClick={()=>setPractMenu(o=>!o)}
                 onMouseEnter={e=>{ if(!practMenu) e.currentTarget.style.background='rgba(139,92,246,.1)'; }}
@@ -4243,45 +4269,6 @@ const handleAuth = async(e) => {
         </div>
         </div>
 
-        {/* ── Material de apoyo (PDFs) — A2 a C2; en A1 vive en el select ✨ Practicar ── */}
-        {nivel!=='A1' && (()=>{
-          // Los PDFs siguen la convención /material/AulaQuest_<tipo>_<nivel>.pdf
-          const cards = [
-            { ic:'📘', t:'Guía de gramática '+nivel,       d:'Reglas clave del nivel '+nivel, url:'/material/AulaQuest_Guia_Gramatica_'+nivel+'.pdf' },
-            { ic:'📋', t:'Vocabulario '+nivel+' completo',  d:'Todas las palabras con traducción', url:'/material/AulaQuest_Vocabulario_'+nivel+'_Completo.pdf' },
-            { ic:'✏️', t:'Hojas de ejercicios',            d:'Práctica imprimible por tema', url:'/material/AulaQuest_Hojas_de_Ejercicios_'+nivel+'.pdf' },
-            { ic:'🔊', t:'Guía de pronunciación',          d:'Sonidos del inglés con audio', url:'/material/AulaQuest_Guia_Pronunciacion.pdf' },
-          ];
-          const hayPdf = true;
-          return (
-        <div id="material-apoyo" style={{marginTop:'1rem'}}>
-          <button onClick={()=>setShowMaterial(!showMaterial)}
-            style={{width:'100%',display:'flex',alignItems:'center',gap:14,background:'linear-gradient(135deg,rgba(99,102,241,.16),rgba(139,92,246,.1))',border:'1px solid rgba(139,92,246,.4)',borderRadius:16,padding:'14px 18px',cursor:'pointer',fontFamily:"'Poppins',sans-serif",textAlign:'left',transition:'background .2s,border-color .2s'}}
-            onMouseEnter={e=>{e.currentTarget.style.background='linear-gradient(135deg,rgba(99,102,241,.26),rgba(139,92,246,.18))';e.currentTarget.style.borderColor='rgba(139,92,246,.6)';}}
-            onMouseLeave={e=>{e.currentTarget.style.background='linear-gradient(135deg,rgba(99,102,241,.16),rgba(139,92,246,.1))';e.currentTarget.style.borderColor='rgba(139,92,246,.4)';}}>
-            <div style={{width:46,height:46,borderRadius:13,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.4rem',flexShrink:0,boxShadow:'0 4px 16px rgba(99,102,241,.4)'}}>📚</div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:'.95rem',fontWeight:700,color:'#e2e8f0'}}>Material de apoyo</div>
-              <div style={{fontSize:'.72rem',color:'#94a3b8',marginTop:2}}>{hayPdf ? '4 recursos descargables · guías y ejercicios en PDF' : 'Próximamente · guías y ejercicios en PDF'}</div>
-            </div>
-            <span style={{fontSize:'1.1rem',color:'#a5b4fc',flexShrink:0}}>{showMaterial?'▴':'▾'}</span>
-          </button>
-          {showMaterial && (
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:12}}>
-              {cards.map((m,i)=>(
-                <a key={i} href={m.url||undefined} target="_blank" rel="noopener noreferrer" download
-                  style={{display:'block',textDecoration:'none',background:'#172033',border:'1px solid rgba(99,102,241,.18)',borderRadius:12,padding:14,cursor:m.url?'pointer':'default',opacity:m.url?1:0.85}}>
-                  <div style={{fontSize:'1.6rem',lineHeight:1}}>{m.ic}</div>
-                  <div style={{color:'#e2e8f0',fontSize:'.78rem',fontWeight:600,marginTop:8}}>{m.t}</div>
-                  <div style={{color:'#64748b',fontSize:'.7rem',marginTop:3,lineHeight:1.5}}>{m.d}</div>
-                  <div style={{color:m.url?'#a5b4fc':'#475569',fontSize:'.7rem',marginTop:10}}>{m.url?'⬇ Descargar PDF':'Próximamente'}</div>
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
-          );
-        })()}
 
       </div>
 
