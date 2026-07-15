@@ -3655,7 +3655,7 @@ const handleAuth = async(e) => {
       )}
       {showMaterial && nivel==='A1' && (
         <div onClick={()=>setShowMaterial(false)} style={{position:'fixed',inset:0,zIndex:9400,background:'rgba(2,6,23,.85)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,fontFamily:"'Poppins',sans-serif"}}>
-          <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:520,background:'rgba(17,22,38,.85)',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(255,255,255,.09)',borderRadius:22,padding:'1.4rem',boxShadow:'0 30px 80px rgba(0,0,0,.6)',position:'relative',maxHeight:'90vh',overflowY:'auto',boxSizing:'border-box'}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:520,background:'linear-gradient(180deg,rgba(24,29,49,.99),rgba(13,17,28,.99))',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(255,255,255,.09)',borderRadius:22,padding:'1.4rem',boxShadow:'0 30px 80px rgba(0,0,0,.6)',position:'relative',maxHeight:'90vh',overflowY:'auto',boxSizing:'border-box'}}>
             <button onClick={()=>setShowMaterial(false)} style={{position:'absolute',top:14,right:14,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#ef4444',width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:12}}>✕</button>
             <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
               <div style={{width:44,height:44,borderRadius:13,background:'linear-gradient(135deg,#10b981,#06b6d4)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.3rem',boxShadow:'0 4px 16px rgba(16,185,129,.35)'}}>📚</div>
@@ -3748,7 +3748,7 @@ const handleAuth = async(e) => {
               </div>
               {practMenu && <div onClick={()=>setPractMenu(false)} style={{position:'fixed',inset:0,zIndex:1999}}/>}
               {practMenu && (
-                <div style={{position:'absolute',top:'calc(100% + 12px)',left:'50%',transform:'translateX(-50%)',minWidth:256,background:'rgba(17,22,38,.72)',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(255,255,255,.09)',borderRadius:18,padding:8,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.6)'}}>
+                <div style={{position:'absolute',top:'calc(100% + 12px)',left:'50%',transform:'translateX(-50%)',minWidth:256,background:'linear-gradient(180deg,rgba(24,29,49,.99),rgba(13,17,28,.99))',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(139,92,246,.28)',borderRadius:18,padding:8,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.75), 0 0 0 1px rgba(139,92,246,.08), 0 0 40px rgba(99,102,241,.12)'}}>
                   <div style={{fontSize:'.6rem',color:'#64748b',fontWeight:700,letterSpacing:'.08em',padding:'6px 10px 8px'}}>PRÁCTICA CON MR. ALEX</div>
                   <div onClick={()=>{ setPractMenu(false); setComidaOpen(true); }}
                     onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
@@ -3801,7 +3801,7 @@ const handleAuth = async(e) => {
             </div>
             {userMenu2 && <div onClick={()=>setUserMenu2(false)} style={{position:'fixed',inset:0,zIndex:1999}}/>}
             {userMenu2 && (
-              <div style={{position:'absolute',top:'calc(100% + 12px)',right:0,minWidth:270,background:'rgba(17,22,38,.72)',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(255,255,255,.09)',borderRadius:18,padding:8,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.6)'}}>
+              <div style={{position:'absolute',top:'calc(100% + 12px)',right:0,minWidth:270,background:'linear-gradient(180deg,rgba(24,29,49,.99),rgba(13,17,28,.99))',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(139,92,246,.28)',borderRadius:18,padding:8,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.75), 0 0 0 1px rgba(139,92,246,.08), 0 0 40px rgba(99,102,241,.12)'}}>
                 <div style={{display:'flex',alignItems:'center',gap:11,padding:'10px 10px 11px'}}>
                   <div style={{width:46,height:46,borderRadius:'50%',background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:'1rem',color:'#fff',flexShrink:0}}>{inic(user?.name)}</div>
                   <div style={{minWidth:0}}>
