@@ -490,7 +490,9 @@ function getRutina(t) {
    Cada tema completado desbloquea su rutina temática (conversación con oraciones completas,
    ej. comida = "Hora de comer") y luego el formato por palabra:
    1) elegir la oración correcta  2) pronunciarla. Si falla → "Así no" + enseñanza con calma. */
-function RepasoAlex({ token, temas, onClose, autoTema, titulo }) {
+function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel }) {
+  const NIVEL_IDX = { A1:0, A2:1, B1:2, B2:3, C1:4, C2:5 };
+  const nivelIdx = NIVEL_IDX[nivel] ?? 0;          // A1-A2: basta la palabra · B1-B2: media oración · C1-C2: oración completa
   const [tema, setTema]           = useState(null);   // {id,name,icon,words,completo}
   const [idx, setIdx]             = useState(0);
   const [reto, setReto]           = useState(null);   // {prompt,promptEs,opts,ans,explic,word,sentences}
@@ -514,21 +516,27 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo }) {
     const w = t.words[i];
     setReto(null); setFails(0); setBType(''); setSel(null); setPhase('select'); setOrb('thinking');
     setBubble('📖 Palabra ' + (i+1) + ' de ' + t.words.length + ' — preparando…');
-    let fr = null;
-    try {
-      const r = await fetch(API+'/api/practice/frase',{method:'POST',headers:authH(token),body:JSON.stringify({en:w.en,es:w.es})});
-      if (r.ok) fr = await r.json();
-    } catch {}
+    // El repaso usa el MISMO ejemplo que el alumno vio al aprender (EjemploPalabra) + su reto de frase (FraseReto)
+    const pFr = fetch(API+'/api/practice/frase',{method:'POST',headers:authH(token),body:JSON.stringify({en:w.en,es:w.es})}).then(r=>r.ok?r.json():null).catch(()=>null);
+    const pEj = fetch(API+'/api/practice/ejemplo',{method:'POST',headers:authH(token),body:JSON.stringify({en:w.en,es:w.es})}).then(r=>r.ok?r.json():null).catch(()=>null);
+    let [fr, ej] = await Promise.all([pFr, pEj]);
     if (!fr || !fr.prompt || !Array.isArray(fr.opts) || fr.opts.length < 2 || typeof fr.ans !== 'number') {
       fr = { prompt:'___', promptEs:'Completa con la palabra correcta.', opts:[w.en,'Goodbye','Thanks'], ans:0, explic:'"'+w.en+'" significa "'+w.es+'".' };
     }
     const sentences = fr.opts.map(o => cap(String(fr.prompt).replace(/_+/g, o)));
-    setReto({ ...fr, word:w, sentences });
-    const habla = () => {
+    setReto({ ...fr, word:w, sentences, ejemplo: (ej && ej.frase) ? ej : null });
+    const elegirFase = () => {
       setBubble('🧩 ¿Cuál oración es la correcta? Elígela abajo 👇' + (fr.promptEs ? ' · ' + fr.promptEs : ''));
       alexSpeak('Choose the correct sentence.', 0.9, ()=>setOrb('idle'), null, ()=>setOrb('speaking'));
     };
-    if (conIntro) alexSpeak('Veamos qué aprendiste! Primero elige la oración correcta, y después la pronuncias como yo te enseñé.', 0.98, habla, 'es', ()=>setOrb('speaking'));
+    const habla = () => {
+      if (ej && ej.frase) {
+        // Recordar el ejemplo visto en clase antes de retar
+        setBubble('📖 Recuerda el ejemplo que viste: "' + ej.frase + '"' + (ej.fraseEs ? ' — ' + ej.fraseEs : ''));
+        alexSpeak('Remember this example: ' + ej.frase, 0.88, elegirFase, null, ()=>setOrb('speaking'));
+      } else elegirFase();
+    };
+    if (conIntro) alexSpeak('Veamos qué aprendiste! Repasaremos con los ejemplos que ya viste: elige la oración correcta y pronúnciala como yo te enseñé.', 0.98, habla, 'es', ()=>setOrb('speaking'));
     else habla();
   };
   const empezarTema = (t) => {
@@ -604,8 +612,9 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo }) {
     if (!reto || modo !== 'palabras' || phase !== 'select' || fin || listening) return;
     if (i === reto.ans) {
       setSel(null); setPhase('speak'); setBType('ok'); setOrb('speaking');
-      setBubble('✅ ¡Correcta! Ahora pronúnciala: "' + reto.sentences[i] + '"');
-      alexSpeak('Excellent! Now say it: ' + reto.sentences[i], 0.88, ()=>{ setOrb('listening'); setBubble('🎤 Dila tú: "' + reto.sentences[reto.ans] + '"'); setBType(''); }, null, ()=>setOrb('speaking'));
+      const pideCompleta = nivelIdx >= 2; // desde B1 se exige la oración completa
+      setBubble('✅ ¡Correcta! Ahora pronúnciala' + (pideCompleta ? ' COMPLETA' : '') + ': "' + reto.sentences[i] + '"');
+      alexSpeak('Excellent! Now say it: ' + reto.sentences[i], 0.88, ()=>{ setOrb('listening'); setBubble('🎤 Dila tú' + (pideCompleta ? ', completa' : '') + ': "' + reto.sentences[reto.ans] + '"'); setBType(''); }, null, ()=>setOrb('speaking'));
     } else {
       setSel(i); setFails(f=>f+1); setBType('err'); setOrb('thinking');
       const ensena = reto.explic || ('"' + reto.word.en + '" significa "' + reto.word.es + '".');
@@ -619,10 +628,24 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo }) {
     if (!reto || !tema) return;
     const w = reto.word;
     const frase = reto.sentences[reto.ans] || w.en;
-    const ok = alts.some(a => isMatch(a, w.en) || clean(a).includes(clean(frase)));
+    // Exigencia por aula: A1-A2 basta la palabra clave · B1-B2 buena parte de la oración · C1-C2 casi completa
+    const partes = clean(frase).split(/\s+/).filter(x => x.length > 2);
+    const ratio = (a) => { if (!partes.length) return 1; const tx = ' ' + clean(a) + ' '; return partes.filter(x => tx.includes(x)).length / partes.length; };
+    const best = alts.reduce((m, a) => Math.max(m, ratio(a)), 0);
+    const wordHit = alts.some(a => isMatch(a, w.en));
+    const ok = nivelIdx <= 1 ? (wordHit || best >= 0.5)
+             : nivelIdx <= 3 ? (best >= 0.6 || (wordHit && best >= 0.35))
+             : (best >= 0.75 || (wordHit && best >= 0.55));
     if (ok) {
       setBType('ok'); setBubble('✅ ¡Perfecto! "' + frase + '"'); setOrb('speaking');
       alexSpeak('Perfect!', 0.9, ()=>avanzar(tema, idx), null, ()=>setOrb('speaking'));
+    } else if (wordHit && nivelIdx >= 2) {
+      // Dijo la palabra pero en este nivel debe decir la oración completa
+      setFails(f=>f+1); setBType('err');
+      setBubble('🙅 Bien la palabra, pero en tu nivel va la oración COMPLETA. Escúchame y repítela: "' + frase + '"');
+      alexSpeak('Bien la palabra, pero di la oración completa, como yo.', 0.98, ()=>{
+        alexSpeak(frase, 0.85, ()=>{ setOrb('listening'); setBubble('🎤 Completa: "' + frase + '"'); setBType(''); }, null, ()=>setOrb('speaking'));
+      }, 'es', ()=>setOrb('speaking'));
     } else {
       setFails(f=>f+1); setBType('err');
       setBubble('🙅 Así no. Escucha e intenta más suave, como yo: ' + w.en);
@@ -719,6 +742,9 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo }) {
                   ))}
                 </div>
               </div>
+            )}
+            {!fin && modo==='palabras' && reto && reto.ejemplo && (
+              <div style={{fontSize:'.68rem',color:'#94a3b8',textAlign:'center',marginBottom:8,background:'rgba(99,102,241,.06)',border:'1px dashed rgba(99,102,241,.25)',borderRadius:10,padding:'7px 10px'}}>📖 Ejemplo que viste: “{reto.ejemplo.frase}”{reto.ejemplo.fraseEs ? ' — ' + reto.ejemplo.fraseEs : ''}</div>
             )}
             {!fin && modo==='palabras' && reto && phase==='select' && (
               <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:12}}>
@@ -3687,8 +3713,8 @@ const handleAuth = async(e) => {
           </div>
         </div>
       )}
-      {repasoOpen && <RepasoAlex token={token} temas={temasRepaso} onClose={()=>setRepasoOpen(false)}/>}
-      {todosOpen && <RepasoAlex token={token} temas={[temaTodos]} autoTema={temaTodos} titulo="🌟 Todos los temas" onClose={()=>setTodosOpen(false)}/>}
+      {repasoOpen && <RepasoAlex token={token} temas={temasRepaso} nivel={nivel} onClose={()=>setRepasoOpen(false)}/>}
+      {todosOpen && <RepasoAlex token={token} temas={[temaTodos]} autoTema={temaTodos} titulo="🌟 Todos los temas" nivel={nivel} onClose={()=>setTodosOpen(false)}/>}
       <div className="aq-bar" style={{background:'rgba(10,14,26,.45)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.8rem',borderBottom:'1px solid rgba(255,255,255,0.06)',position:'sticky',top:0,zIndex:100}}>
         <div style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}} onClick={()=>setScreen('home')}>
           <div style={{width:34,height:34,background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.95rem',boxShadow:'0 0 16px rgba(99,102,241,.4)'}}>🎓</div>
