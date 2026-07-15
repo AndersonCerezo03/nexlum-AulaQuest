@@ -429,6 +429,336 @@ function MenuItem({ icon, label, onClick, danger }) {
   );
 }
 
+/* ── ✨ Practicar (A1): "Hora de comer" — conversación con Mr. Alex usando SOLO palabras ya aprendidas ── */
+function ComidaAlex({ token, learned, onClose }) {
+  const [meal, setMeal]           = useState(null);   // 'desayuno'|'almuerzo'|'cena'
+  const [turn, setTurn]           = useState(0);
+  const [orb, setOrb]             = useState('idle');
+  const [bubble, setBubble]       = useState('');
+  const [bType, setBType]         = useState('');
+  const [listening, setListening] = useState(false);
+  const [usadas, setUsadas]       = useState([]);
+  const [fails, setFails]         = useState(0);
+  const [fin, setFin]             = useState(false);
+  useEffect(()=>()=>{ stopAlex(); window._alexListening=false; },[]);
+
+  const MEALS = {
+    desayuno: { emoji:'☕',  en:'Breakfast', nombre:'el desayuno', grad:'linear-gradient(135deg,#f59e0b,#fbbf24)', q:[
+      'Good morning! What do you want for breakfast?',
+      'Great! What do you drink in the morning?',
+      'Nice! Tell me one more word you know, in English.',
+    ]},
+    almuerzo: { emoji:'🍽️', en:'Lunch', nombre:'el almuerzo', grad:'linear-gradient(135deg,#06b6d4,#3b82f6)', q:[
+      "It's lunch time! What do you eat for lunch?",
+      'Good! What do you drink with your lunch?',
+      'Excellent! Say one more English word you learned.',
+    ]},
+    cena: { emoji:'🌙', en:'Dinner', nombre:'la cena', grad:'linear-gradient(135deg,#8b5cf6,#d946ef)', q:[
+      "Good evening! What's for dinner tonight?",
+      'Sounds good! What do you drink at dinner?',
+      'Great! Tell me one more word you know, in English.',
+    ]},
+  };
+  const TOTAL_TURNOS = 3;
+
+  const cerrar = () => { stopAlex(); window._alexListening=false; onClose(); };
+  const preguntar = (m, t) => {
+    const q = MEALS[m].q[t];
+    setBType(''); setOrb('thinking');
+    setBubble('🗣️ ' + q);
+    alexSpeak(q, 0.88, ()=>{ setOrb('listening'); setBubble('🎤 ' + q + ' — responde en inglés con una palabra que aprendiste.'); }, null, ()=>setOrb('speaking'));
+  };
+  const empezar = (m) => { setMeal(m); setTurn(0); setUsadas([]); setFails(0); setFin(false); preguntar(m, 0); };
+
+  const procesar = (alts) => {
+    let w = learned.find(x => !usadas.includes(x.en) && alts.some(a=>isMatch(a, x.en)));
+    if (!w) w = learned.find(x => alts.some(a=>isMatch(a, x.en)));
+    if (w) {
+      setUsadas(u=>[...u, w.en]); setFails(0);
+      setBType('ok'); setBubble('✅ ¡Muy bien! Usaste "' + w.en + '" (' + w.es + ').'); setOrb('speaking');
+      const next = turn + 1;
+      if (next < TOTAL_TURNOS) {
+        alexSpeak('Excellent! ' + w.en + '!', 0.9, ()=>{ setTurn(next); preguntar(meal, next); }, null, ()=>setOrb('speaking'));
+      } else {
+        setFin(true);
+        setBubble('🏆 ¡Práctica completada! Hablaste en inglés usando lo que aprendiste.'); setBType('ok');
+        alexSpeak('Felicitaciones! Completaste la práctica de ' + MEALS[meal].nombre + ' hablando en inglés. Muy bien!', 0.98, ()=>setOrb('idle'), 'es', ()=>setOrb('speaking'));
+      }
+    } else {
+      const f = fails + 1; setFails(f);
+      const sug = learned.find(x=>!usadas.includes(x.en)) || learned[0];
+      setBType('err');
+      if (f >= 2 && sug) {
+        setBubble('🤔 No, así no. Piensa un poco más. Pista: puedes decir "I want ' + sug.en + '" (' + sug.es + ').');
+        alexSpeak('No, así no. Piensa un poco más. Puedes decir: I want ' + sug.en, 0.95, ()=>setOrb('listening'), 'es', ()=>setOrb('speaking'));
+      } else {
+        setBubble('🤔 No, así no. Piensa un poco más: responde con una palabra en inglés que ya aprendiste.');
+        alexSpeak('No, así no. Piensa un poco más. Usa una palabra en inglés que ya aprendiste.', 0.95, ()=>setOrb('listening'), 'es', ()=>setOrb('speaking'));
+      }
+    }
+  };
+
+  const hablar = () => {
+    if (listening || fin || !meal) return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setBubble('Usa Chrome para el reconocimiento de voz.'); setBType('err'); return; }
+    stopAlex(); window._alexListening = true;
+    const rec = new SR();
+    rec.lang='en-US'; rec.interimResults=false; rec.maxAlternatives=5;
+    let timer=null;
+    rec.onstart = () => { setListening(true); setOrb('listening'); setBubble('🎙️ Escuchando… ¡Habla en inglés!'); setBType(''); timer=setTimeout(()=>{ try{rec.stop();}catch(e){} },10000); };
+    rec.onend   = () => { window._alexListening=false; setListening(false); if(timer)clearTimeout(timer); };
+    rec.onerror = (e) => {
+      window._alexListening=false; setListening(false); setOrb('idle'); setBType('err');
+      if (e.error==='no-speech') setBubble('🔇 No te escuché. Toca el micrófono e intenta de nuevo.');
+      else if (e.error==='not-allowed') setBubble('🎤 Micrófono bloqueado. Permite el acceso en tu navegador.');
+      else setBubble('Mic error: ' + e.error);
+    };
+    rec.onresult = (e) => { setOrb('thinking'); procesar(Array.from(e.results[0]).map(r=>r.transcript)); };
+    try { rec.start(); } catch(err) { window._alexListening=false; setListening(false); setOrb('idle'); }
+  };
+
+  const chips = learned.filter(w=>!usadas.includes(w.en)).slice(0, 8);
+  return (
+    <div style={{position:'fixed',inset:0,zIndex:9500,background:'rgba(2,6,23,.88)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',padding:12,fontFamily:"'Poppins',sans-serif"}}>
+      <div style={{width:'100%',maxWidth:560,maxHeight:'92vh',overflowY:'auto',background:'#0a0f1e',border:'1px solid rgba(99,102,241,.3)',borderRadius:20,padding:'1.3rem',boxSizing:'border-box',boxShadow:'0 0 60px rgba(99,102,241,.25)',position:'relative'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <span style={{fontSize:'.8rem',fontWeight:700,color:'#6366f1',letterSpacing:'.08em'}}>MR. ALEX</span>
+            <span style={{background:'rgba(6,182,212,.15)',color:'#22d3ee',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>🍽️ Hora de comer</span>
+            {meal && <span style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>{MEALS[meal].emoji} {MEALS[meal].en}</span>}
+          </div>
+          <button onClick={cerrar} style={{background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#ef4444',width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:12}}>✕</button>
+        </div>
+
+        {learned.length === 0 ? (
+          <div style={{textAlign:'center',padding:'1.6rem .4rem'}}>
+            <div style={{fontSize:'2.4rem'}}>🔒</div>
+            <div style={{color:'#e2e8f0',fontWeight:800,fontSize:'1rem',margin:'10px 0 6px'}}>Aún no tienes palabras aprendidas</div>
+            <div style={{color:'#94a3b8',fontSize:'.82rem',lineHeight:1.6}}>Practica tu primer tema con Mr. Alex y vuelve aquí para conversar en cada comida usando lo aprendido.</div>
+            <button onClick={cerrar} style={{marginTop:16,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',padding:'11px 22px',borderRadius:12,fontWeight:700,fontSize:'.85rem',cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Entendido</button>
+          </div>
+        ) : !meal ? (
+          <>
+            <div style={{color:'#94a3b8',fontSize:'.8rem',lineHeight:1.6,marginBottom:14}}>Elige una comida y conversa en inglés con Mr. Alex. Solo usa <b style={{color:'#c4b5fd'}}>palabras que ya aprendiste</b> ({learned.length} disponibles).</div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
+              {Object.keys(MEALS).map(k=>(
+                <button key={k} onClick={()=>empezar(k)}
+                  style={{background:'rgba(255,255,255,.04)',border:'1.5px solid rgba(255,255,255,.1)',borderRadius:16,padding:'16px 12px',cursor:'pointer',fontFamily:"'Poppins',sans-serif",textAlign:'center',transition:'border-color .15s'}}
+                  onMouseEnter={e=>e.currentTarget.style.borderColor='rgba(139,92,246,.6)'}
+                  onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,.1)'}>
+                  <div style={{width:46,height:46,borderRadius:13,background:MEALS[k].grad,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.4rem',margin:'0 auto 8px'}}>{MEALS[k].emoji}</div>
+                  <div style={{color:'#f1f5f9',fontWeight:700,fontSize:'.88rem'}}>{MEALS[k].en}</div>
+                  <div style={{color:'#94a3b8',fontSize:'.68rem',marginTop:2,textTransform:'capitalize'}}>{k}</div>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{display:'flex',gap:5,marginBottom:12}}>
+              {Array.from({length:TOTAL_TURNOS}).map((_,i)=>(
+                <div key={i} style={{flex:1,height:5,borderRadius:5,background: i<turn||fin ? '#34d399' : i===turn ? 'linear-gradient(90deg,#6366f1,#d946ef)' : 'rgba(255,255,255,.12)'}}/>
+              ))}
+            </div>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',marginBottom:12}}>
+              <MrAlexOrb size={120} state={orb}/>
+              <div style={{fontSize:'.62rem',color:'#64748b',marginTop:6}}>{orb==='idle'?'listo':orb==='listening'?'escuchando...':orb==='speaking'?'hablando...':'procesando...'}</div>
+              <div style={{background:bType==='ok'?'rgba(16,185,129,.1)':bType==='err'?'rgba(239,68,68,.1)':'rgba(99,102,241,.08)',border:'1px solid '+(bType==='ok'?'#10b981':bType==='err'?'#ef4444':'rgba(99,102,241,.25)'),borderRadius:14,padding:'10px 14px',fontSize:'.8rem',color:bType==='ok'?'#34d399':bType==='err'?'#f87171':'#e2e8f0',maxWidth:400,textAlign:'center',marginTop:10,lineHeight:1.5}}>{bubble}</div>
+            </div>
+            {!fin && chips.length>0 && (
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:'.62rem',color:'#64748b',marginBottom:6}}>💡 Palabras que puedes usar:</div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                  {chips.map(w=><span key={w.en} style={{fontSize:'.7rem',padding:'4px 10px',borderRadius:20,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',color:'#cbd5e1',fontWeight:600}}>{w.en} · {w.es}</span>)}
+                </div>
+              </div>
+            )}
+            {fin ? (
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>setMeal(null)} style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.14)',color:'#e2e8f0',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.82rem',cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Otra comida 🍽️</button>
+                <button onClick={cerrar} style={{flex:1,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.82rem',cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Terminar 🏆</button>
+              </div>
+            ) : (
+              <button onClick={hablar} disabled={listening}
+                style={{width:'100%',background:listening?'#334155':'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',color:'#fff',border:'none',padding:'13px',borderRadius:12,fontWeight:700,fontSize:'.88rem',cursor:listening?'default':'pointer',fontFamily:"'Poppins',sans-serif",boxShadow:listening?'none':'0 0 16px rgba(139,92,246,.4)'}}>
+                {listening?'🎙️ Escuchando…':'🎤 Responder en inglés'}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── ✨ Practicar (A1): "Repaso hablado" — Mr. Alex recorre TODAS las palabras de un tema completado ── */
+function RepasoAlex({ token, temas, onClose }) {
+  const [tema, setTema]           = useState(null);   // {id,name,icon,words:[{en,es}]}
+  const [idx, setIdx]             = useState(0);
+  const [reto, setReto]           = useState(null);   // {prompt,promptEs,explic,word}
+  const [orb, setOrb]             = useState('idle');
+  const [bubble, setBubble]       = useState('');
+  const [bType, setBType]         = useState('');
+  const [listening, setListening] = useState(false);
+  const [fails, setFails]         = useState(0);
+  const [fin, setFin]             = useState(false);
+  useEffect(()=>()=>{ stopAlex(); window._alexListening=false; },[]);
+
+  const cerrar = () => { stopAlex(); window._alexListening=false; onClose(); };
+
+  const cargarReto = async (t, i, conIntro) => {
+    const w = t.words[i];
+    setReto(null); setFails(0); setBType(''); setOrb('thinking');
+    setBubble('📖 Palabra ' + (i+1) + ' de ' + t.words.length + ' — preparando frase…');
+    let fr = null;
+    try {
+      const r = await fetch(API+'/api/practice/frase',{method:'POST',headers:authH(token),body:JSON.stringify({en:w.en,es:w.es})});
+      if (r.ok) fr = await r.json();
+    } catch {}
+    if (!fr || !fr.prompt) fr = { prompt:'Say: "'+w.en+'"', promptEs:'Di: '+w.en+' ('+w.es+')', explic:'' };
+    setReto({ ...fr, word:w });
+    const habla = () => {
+      setBubble('🧩 ' + fr.prompt + (fr.promptEs ? ' — ' + fr.promptEs : ''));
+      alexSpeak('Complete the sentence: ' + String(fr.prompt).replace(/_+/g,' blank '), 0.88,
+        ()=>{ setOrb('listening'); setBubble('🎤 ' + fr.prompt + ' — di la palabra que falta.'); }, null, ()=>setOrb('speaking'));
+    };
+    if (conIntro) alexSpeak('Veamos qué aprendiste! Te diré frases y tú las completas en voz alta con las palabras del tema.', 0.98, habla, 'es', ()=>setOrb('speaking'));
+    else habla();
+  };
+  const empezarTema = (t) => { setTema(t); setIdx(0); setFin(false); cargarReto(t, 0, true); };
+  const terminar = (t) => {
+    setFin(true); setOrb('speaking'); setBType('ok');
+    setBubble('🏆 ¡Repaso completado! Repasaste las ' + t.words.length + ' palabras de "' + t.name + '".');
+    alexSpeak('Felicitaciones! Completaste el repaso del tema ' + t.name + '. Excelente trabajo!', 0.98, ()=>setOrb('idle'), 'es', ()=>setOrb('speaking'));
+  };
+  const avanzar = (t, i) => {
+    const next = i + 1;
+    if (next < t.words.length) { setIdx(next); cargarReto(t, next, false); }
+    else { setIdx(next); terminar(t); }
+  };
+  const saltar = () => { if (!tema || fin) return; stopAlex(); avanzar(tema, idx); };
+
+  const procesar = (alts) => {
+    if (!reto || !tema) return;
+    const w = reto.word;
+    if (alts.some(a=>isMatch(a, w.en))) {
+      setBType('ok'); setBubble('✅ ¡Perfecto! "' + w.en + '" (' + w.es + ')'); setOrb('speaking');
+      alexSpeak('Perfect! ' + w.en + '!', 0.9, ()=>avanzar(tema, idx), null, ()=>setOrb('speaking'));
+    } else {
+      const f = fails + 1; setFails(f); setBType('err');
+      if (f === 1) {
+        setBubble('🤔 No, así no. Piensa un poco más…');
+        alexSpeak('No, así no. Piensa un poco más.', 0.95, ()=>setOrb('listening'), 'es', ()=>setOrb('speaking'));
+      } else if (f === 2) {
+        setBubble('💡 Pista: empieza por "' + w.en[0].toUpperCase() + '", tiene ' + w.en.length + ' letras. En español: ' + w.es + '.');
+        alexSpeak('Pista: empieza por la letra ' + w.en[0] + ', y en español significa ' + w.es + '. Inténtalo otra vez.', 0.95, ()=>setOrb('listening'), 'es', ()=>setOrb('speaking'));
+      } else {
+        setBubble('🐢 Escucha: ' + w.en + ' — primero despacio, luego dila tú.');
+        alexSpeak('Escucha e intenta más suave, como yo.', 0.98, ()=>{
+          alexSpeakSlow(w.en, token, ()=>{
+            alexSpeak(w.en, 0.85, ()=>{ setOrb('listening'); setBubble('🎤 Ahora tú: ' + w.en); setBType(''); }, null, ()=>setOrb('speaking'));
+          });
+        }, 'es', ()=>setOrb('speaking'));
+      }
+    }
+  };
+
+  const hablar = () => {
+    if (listening || fin || !reto) return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setBubble('Usa Chrome para el reconocimiento de voz.'); setBType('err'); return; }
+    stopAlex(); window._alexListening = true;
+    const rec = new SR();
+    rec.lang='en-US'; rec.interimResults=false; rec.maxAlternatives=5;
+    let timer=null;
+    rec.onstart = () => { setListening(true); setOrb('listening'); setBubble('🎙️ Escuchando… di la palabra que falta.'); setBType(''); timer=setTimeout(()=>{ try{rec.stop();}catch(e){} },10000); };
+    rec.onend   = () => { window._alexListening=false; setListening(false); if(timer)clearTimeout(timer); };
+    rec.onerror = (e) => {
+      window._alexListening=false; setListening(false); setOrb('idle'); setBType('err');
+      if (e.error==='no-speech') setBubble('🔇 No te escuché. Toca el micrófono e intenta de nuevo.');
+      else if (e.error==='not-allowed') setBubble('🎤 Micrófono bloqueado. Permite el acceso en tu navegador.');
+      else setBubble('Mic error: ' + e.error);
+    };
+    rec.onresult = (e) => { setOrb('thinking'); procesar(Array.from(e.results[0]).map(r=>r.transcript)); };
+    try { rec.start(); } catch(err) { window._alexListening=false; setListening(false); setOrb('idle'); }
+  };
+
+  return (
+    <div style={{position:'fixed',inset:0,zIndex:9500,background:'rgba(2,6,23,.88)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',padding:12,fontFamily:"'Poppins',sans-serif"}}>
+      <div style={{width:'100%',maxWidth:560,maxHeight:'92vh',overflowY:'auto',background:'#0a0f1e',border:'1px solid rgba(99,102,241,.3)',borderRadius:20,padding:'1.3rem',boxSizing:'border-box',boxShadow:'0 0 60px rgba(99,102,241,.25)',position:'relative'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <span style={{fontSize:'.8rem',fontWeight:700,color:'#6366f1',letterSpacing:'.08em'}}>MR. ALEX</span>
+            <span style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>🧠 Repaso hablado</span>
+            {tema && !fin && <span style={{background:'rgba(16,185,129,.15)',color:'#34d399',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>{Math.min(idx+1, tema.words.length)}/{tema.words.length}</span>}
+          </div>
+          <button onClick={cerrar} style={{background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#ef4444',width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:12}}>✕</button>
+        </div>
+
+        {temas.length === 0 ? (
+          <div style={{textAlign:'center',padding:'1.6rem .4rem'}}>
+            <div style={{fontSize:'2.4rem'}}>🔒</div>
+            <div style={{color:'#e2e8f0',fontWeight:800,fontSize:'1rem',margin:'10px 0 6px'}}>Completa tu primer tema</div>
+            <div style={{color:'#94a3b8',fontSize:'.82rem',lineHeight:1.6}}>El repaso hablado se desbloquea cuando completas un tema. Mr. Alex te hará decir frases completas con TODAS las palabras que aprendiste.</div>
+            <button onClick={cerrar} style={{marginTop:16,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',padding:'11px 22px',borderRadius:12,fontWeight:700,fontSize:'.85rem',cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Entendido</button>
+          </div>
+        ) : !tema ? (
+          <>
+            <div style={{color:'#94a3b8',fontSize:'.8rem',lineHeight:1.6,marginBottom:14}}>Elige un tema completado. Mr. Alex dirá <b style={{color:'#c4b5fd'}}>"¡Veamos qué aprendiste!"</b> y repasarán <b style={{color:'#c4b5fd'}}>todas sus palabras</b> en frases completas.</div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {temas.map(t=>(
+                <button key={t.id} onClick={()=>empezarTema(t)}
+                  style={{display:'flex',alignItems:'center',gap:11,background:'rgba(255,255,255,.04)',border:'1.5px solid rgba(255,255,255,.1)',borderRadius:14,padding:'11px 13px',cursor:'pointer',fontFamily:"'Poppins',sans-serif",textAlign:'left',transition:'border-color .15s'}}
+                  onMouseEnter={e=>e.currentTarget.style.borderColor='rgba(139,92,246,.6)'}
+                  onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,.1)'}>
+                  <span style={{fontSize:'1.4rem'}}>{t.icon}</span>
+                  <span style={{flex:1}}>
+                    <span style={{display:'block',color:'#f1f5f9',fontWeight:700,fontSize:'.85rem'}}>{t.name}</span>
+                    <span style={{display:'block',color:'#94a3b8',fontSize:'.68rem',marginTop:1}}>{t.words.length} palabras · ✅ completado</span>
+                  </span>
+                  <span style={{color:'#475569'}}>›</span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{width:'100%',background:'#1e293b',height:7,borderRadius:8,overflow:'hidden',marginBottom:12}}>
+              <div style={{width:(fin?100:Math.round((idx/tema.words.length)*100))+'%',height:'100%',background:'linear-gradient(90deg,#6366f1,#06b6d4,#10b981)',transition:'width .4s ease'}}/>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',marginBottom:12}}>
+              <MrAlexOrb size={120} state={orb}/>
+              <div style={{fontSize:'.62rem',color:'#64748b',marginTop:6}}>{orb==='idle'?'listo':orb==='listening'?'escuchando...':orb==='speaking'?'hablando...':'procesando...'}</div>
+              <div style={{background:bType==='ok'?'rgba(16,185,129,.1)':bType==='err'?'rgba(239,68,68,.1)':'rgba(99,102,241,.08)',border:'1px solid '+(bType==='ok'?'#10b981':bType==='err'?'#ef4444':'rgba(99,102,241,.25)'),borderRadius:14,padding:'10px 14px',fontSize:'.8rem',color:bType==='ok'?'#34d399':bType==='err'?'#f87171':'#e2e8f0',maxWidth:400,textAlign:'center',marginTop:10,lineHeight:1.5}}>{bubble}</div>
+            </div>
+            {!fin && reto && (
+              <div style={{background:'#020617',border:'1px solid rgba(99,102,241,.2)',borderRadius:14,padding:'0.9rem',textAlign:'center',marginBottom:12}}>
+                <div style={{fontSize:'1.05rem',fontWeight:800,color:'#f1f5f9',lineHeight:1.5}}>{reto.prompt}</div>
+                {reto.promptEs && <div style={{fontSize:'.72rem',color:'#94a3b8',marginTop:4}}>{reto.promptEs}</div>}
+              </div>
+            )}
+            {fin ? (
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>{ setTema(null); setReto(null); setBubble(''); setBType(''); setOrb('idle'); }} style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.14)',color:'#e2e8f0',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.82rem',cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Otro tema 🧠</button>
+                <button onClick={cerrar} style={{flex:1,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',padding:'12px',borderRadius:12,fontWeight:700,fontSize:'.82rem',cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Terminar 🏆</button>
+              </div>
+            ) : (
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={hablar} disabled={listening || !reto}
+                  style={{flex:2,background:(listening||!reto)?'#334155':'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',color:'#fff',border:'none',padding:'13px',borderRadius:12,fontWeight:700,fontSize:'.88rem',cursor:(listening||!reto)?'default':'pointer',fontFamily:"'Poppins',sans-serif",boxShadow:(listening||!reto)?'none':'0 0 16px rgba(139,92,246,.4)'}}>
+                  {listening?'🎙️ Escuchando…':'🎤 Decir la palabra'}
+                </button>
+                <button onClick={saltar} style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.14)',color:'#94a3b8',padding:'13px',borderRadius:12,fontWeight:600,fontSize:'.78rem',cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Saltar ⏭</button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Home({ onEmpezar, user, onLogout, onAdmin }) {
   const [cursosOpen, setCursosOpen] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
@@ -2598,6 +2928,9 @@ export default function App() {
   const [showDailyModal, setShowDailyModal] = useState(false);   // aviso de límite diario (versión gratuita)
   const [interviewReqState,  setInterviewReqState]  = useState(''); // ''|'sending'|'sent'|'error'
   const [showMaterial,       setShowMaterial]       = useState(false); // panel de material de apoyo (PDFs)
+  const [practMenu,          setPractMenu]          = useState(false); // select ✨ Practicar (solo A1)
+  const [comidaOpen,         setComidaOpen]         = useState(false); // práctica "Hora de comer"
+  const [repasoOpen,         setRepasoOpen]         = useState(false); // "Repaso hablado"
   const nivel = (esAdmin && adminVistaNivel) ? adminVistaNivel : (user?.englishLevel || 'A1');
   const [TOPICS,      setTOPICS]      = useState([]);
   const [vw,          setVw]          = useState(typeof window!=='undefined'?window.innerWidth:1200); // ancho para el panal responsive
@@ -3072,6 +3405,14 @@ const handleAuth = async(e) => {
   const temasHechosNivel     = TOPICS.filter(t => progTemas[t.id]?.completo).length;
   const pctNivel = palabrasTotalesNivel>0 ? Math.round((palabrasHechasNivel/palabrasTotalesNivel)*100) : 0;
 
+  // ✨ Practicar (A1): palabras ya aprendidas y temas completados (para "Hora de comer" y "Repaso hablado")
+  const learnedWords = TOPICS.flatMap(t => {
+    const comp = progTemas[t.id]?.palabrasCompletadas || [];
+    return (vocabData[t.id]||[]).filter(w => comp.includes(w.en));
+  });
+  const temasCompletos = TOPICS.filter(t => progTemas[t.id]?.completo && (vocabData[t.id]||[]).length > 0)
+    .map(t => ({ id:t.id, name:t.name, icon:t.icon, words: vocabData[t.id]||[] }));
+
   if (screen2==='quiz') return (
     <LevelQuiz
       nivel={nivel}
@@ -3312,6 +3653,8 @@ const handleAuth = async(e) => {
           </div>
         </div>
       )}
+      {comidaOpen && <ComidaAlex token={token} learned={learnedWords} onClose={()=>setComidaOpen(false)}/>}
+      {repasoOpen && <RepasoAlex token={token} temas={temasCompletos} onClose={()=>setRepasoOpen(false)}/>}
       <div className="aq-bar" style={{background:'rgba(10,14,26,.45)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.8rem',borderBottom:'1px solid rgba(255,255,255,0.06)',position:'sticky',top:0,zIndex:100}}>
         <div style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}} onClick={()=>setScreen('home')}>
           <div style={{width:34,height:34,background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.95rem',boxShadow:'0 0 16px rgba(99,102,241,.4)'}}>🎓</div>
@@ -3370,33 +3713,73 @@ const handleAuth = async(e) => {
           </>)}
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
+          {nivel==='A1' && (
+            <div style={{position:'relative'}}>
+              <div onClick={()=>setPractMenu(o=>!o)}
+                style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'4px 6px',borderRadius:12,transition:'all .2s'}}>
+                <span style={{width:26,height:26,borderRadius:'50%',background:'linear-gradient(135deg,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.78rem',boxShadow:'0 0 12px rgba(139,92,246,'+(practMenu?'.7':'.45')+')'}}>✨</span>
+                <span style={{fontWeight:700,fontSize:'.78rem',background:'linear-gradient(135deg,#c4b5fd,#f0abfc)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Practicar</span>
+                <span style={{fontSize:'.55rem',color:'#a78bfa',transition:'transform .2s',transform:practMenu?'rotate(180deg)':'none'}}>▼</span>
+              </div>
+              {practMenu && <div onClick={()=>setPractMenu(false)} style={{position:'fixed',inset:0,zIndex:1999}}/>}
+              {practMenu && (
+                <div style={{position:'absolute',top:'calc(100% + 12px)',right:0,minWidth:256,background:'rgba(17,22,38,.72)',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(255,255,255,.09)',borderRadius:18,padding:8,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.6)'}}>
+                  <div style={{fontSize:'.6rem',color:'#64748b',fontWeight:700,letterSpacing:'.08em',padding:'6px 10px 8px'}}>PRÁCTICA CON MR. ALEX</div>
+                  <div onClick={()=>{ setPractMenu(false); setComidaOpen(true); }}
+                    onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
+                    style={{display:'flex',alignItems:'center',gap:11,padding:10,borderRadius:12,cursor:'pointer',transition:'background .12s'}}>
+                    <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#06b6d4,#3b82f6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem'}}>🍽️</div>
+                    <div style={{flex:1}}><div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9'}}>Hora de comer</div><div style={{fontSize:'.65rem',color:'#94a3b8'}}>Conversa en cada comida</div></div>
+                    <span style={{color:'#475569',fontSize:'.8rem'}}>›</span>
+                  </div>
+                  <div onClick={()=>{ setPractMenu(false); setRepasoOpen(true); }}
+                    onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
+                    style={{display:'flex',alignItems:'center',gap:11,padding:10,borderRadius:12,cursor:'pointer',transition:'background .12s'}}>
+                    <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem'}}>🧠</div>
+                    <div style={{flex:1}}><div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9'}}>Repaso hablado</div><div style={{fontSize:'.65rem',color:'#94a3b8'}}>¡Veamos qué aprendiste!</div></div>
+                    <span style={{color:'#475569',fontSize:'.8rem'}}>›</span>
+                  </div>
+                  <div style={{height:1,background:'rgba(255,255,255,.07)',margin:'6px 8px'}}/>
+                  <div style={{fontSize:'.6rem',color:'#64748b',fontWeight:700,letterSpacing:'.08em',padding:'6px 10px 8px'}}>RECURSOS</div>
+                  <div onClick={()=>{ setPractMenu(false); setShowMaterial(true); setTimeout(()=>{ document.getElementById('material-apoyo')?.scrollIntoView({behavior:'smooth',block:'center'}); },120); }}
+                    onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
+                    style={{display:'flex',alignItems:'center',gap:11,padding:10,borderRadius:12,cursor:'pointer',transition:'background .12s'}}>
+                    <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#10b981,#06b6d4)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem'}}>📚</div>
+                    <div style={{flex:1}}><div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9'}}>Material de apoyo</div><div style={{fontSize:'.65rem',color:'#94a3b8'}}>PDF descargables del nivel</div></div>
+                    <span style={{color:'#475569',fontSize:'.8rem'}}>›</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <div style={{background:'rgba(16,185,129,.15)',border:'1px solid rgba(16,185,129,.35)',color:'#10b981',padding:'3px 10px',borderRadius:50,fontSize:'.7rem',fontWeight:700}}>{nivel}</div>
           <div style={{position:'relative'}}>
             <div onClick={()=>setUserMenu2(o=>!o)}
-              style={{display:'flex',alignItems:'center',gap:6,background:userMenu2?'rgba(139,92,246,.16)':'rgba(99,102,241,.08)',border:'1px solid '+(userMenu2?'rgba(139,92,246,.5)':'rgba(99,102,241,.2)'),padding:'4px 10px 4px 4px',borderRadius:50,cursor:'pointer',transition:'all .2s'}}>
-              <div style={{width:26,height:26,borderRadius:'50%',background:'linear-gradient(135deg,#6366f1,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.65rem',fontWeight:700,color:'#fff'}}>
+              style={{display:'flex',alignItems:'center',gap:8,background:'transparent',border:'none',padding:'4px 6px',borderRadius:12,cursor:'pointer',transition:'all .2s'}}>
+              <div style={{width:30,height:30,borderRadius:'50%',background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.68rem',fontWeight:800,color:'#fff',boxShadow:'0 0 0 2px rgba(139,92,246,'+(userMenu2?'.6':'.25')+')',transition:'box-shadow .2s'}}>
                 {inic(user?.name)}
               </div>
               <div>
                 <div style={{fontSize:'.75rem',fontWeight:600,color:'#e2e8f0'}}>{(user?.name||'').split(' ')[0]}</div>
                 <div style={{fontSize:'.62rem',color:'#64748b'}}>{xp} XP</div>
               </div>
-              <span style={{fontSize:'.55rem',color:'#a5b4fc',marginLeft:2}}>{userMenu2?'▲':'▼'}</span>
+              <span style={{fontSize:'.55rem',color:'#a5b4fc',marginLeft:2,transition:'transform .2s',transform:userMenu2?'rotate(180deg)':'none'}}>▼</span>
             </div>
             {userMenu2 && <div onClick={()=>setUserMenu2(false)} style={{position:'fixed',inset:0,zIndex:1999}}/>}
             {userMenu2 && (
-              <div style={{position:'absolute',top:'calc(100% + 12px)',right:0,minWidth:270,background:'rgba(13,17,28,.98)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',border:'1px solid rgba(139,92,246,.3)',borderRadius:16,padding:10,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.7), 0 0 0 1px rgba(139,92,246,.08)'}}>
-                <div style={{display:'flex',alignItems:'center',gap:11,padding:'6px 8px 12px'}}>
+              <div style={{position:'absolute',top:'calc(100% + 12px)',right:0,minWidth:270,background:'rgba(17,22,38,.72)',backdropFilter:'blur(26px) saturate(1.5)',WebkitBackdropFilter:'blur(26px) saturate(1.5)',border:'1px solid rgba(255,255,255,.09)',borderRadius:18,padding:8,zIndex:2000,boxShadow:'0 24px 60px rgba(0,0,0,.6)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:11,padding:'10px 10px 11px'}}>
                   <div style={{width:46,height:46,borderRadius:'50%',background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:'1rem',color:'#fff',flexShrink:0}}>{inic(user?.name)}</div>
                   <div style={{minWidth:0}}>
                     <div style={{fontSize:'.92rem',fontWeight:700,color:'#e2e8f0',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user?.name}</div>
                     <div style={{fontSize:'.68rem',color:'#64748b',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user?.email}</div>
+                    <div style={{display:'flex',gap:5,marginTop:5,flexWrap:'wrap'}}>
+                      <span style={{fontSize:'.6rem',color:'#a5b4fc',background:'rgba(139,92,246,.16)',borderRadius:20,padding:'2px 9px',fontWeight:700}}>{esAdmin?'🛡️ Administrador':'Aula '+(user?.englishLevel||'')}</span>
+                      <span style={{fontSize:'.6rem',color:'#fbbf24',background:'rgba(245,158,11,.14)',borderRadius:20,padding:'2px 9px',fontWeight:700}}>{xp} XP</span>
+                    </div>
                   </div>
                 </div>
-                <div style={{display:'flex',alignItems:'center',gap:9,background:'rgba(99,102,241,.12)',border:'1px solid rgba(99,102,241,.3)',borderRadius:11,padding:'8px 11px',marginBottom:8}}>
-                  <span style={{fontSize:'1rem'}}>{esAdmin?'🛡️':'🎓'}</span>
-                  <div><div style={{fontSize:'.64rem',color:'#64748b'}}>{esAdmin?'Rol':'Tu aula'}</div><div style={{fontSize:'.82rem',fontWeight:700,color:'#a5b4fc'}}>{esAdmin?'Administrador':(user?.englishLevel+' — '+(NIVEL_NOMBRE[user?.englishLevel]||''))}</div></div>
-                </div>
+                <div style={{height:1,background:'rgba(255,255,255,.07)',margin:'2px 8px 6px'}}/>
                 <MenuItem icon="👤" label="Ver / editar mi perfil" onClick={abrirPerfil}/>
                 {esAdmin && <MenuItem icon="🛡️" label="Panel de administrador" onClick={()=>{ setUserMenu2(false); setScreen2('admin'); }}/>}
                 <div style={{height:1,background:'rgba(255,255,255,.07)',margin:'6px 6px'}}/>
@@ -3866,7 +4249,7 @@ const handleAuth = async(e) => {
           ];
           const hayPdf = true;
           return (
-        <div style={{marginTop:'1rem'}}>
+        <div id="material-apoyo" style={{marginTop:'1rem'}}>
           <button onClick={()=>setShowMaterial(!showMaterial)}
             style={{width:'100%',display:'flex',alignItems:'center',gap:14,background:'linear-gradient(135deg,rgba(99,102,241,.16),rgba(139,92,246,.1))',border:'1px solid rgba(139,92,246,.4)',borderRadius:16,padding:'14px 18px',cursor:'pointer',fontFamily:"'Poppins',sans-serif",textAlign:'left',transition:'background .2s,border-color .2s'}}
             onMouseEnter={e=>{e.currentTarget.style.background='linear-gradient(135deg,rgba(99,102,241,.26),rgba(139,92,246,.18))';e.currentTarget.style.borderColor='rgba(139,92,246,.6)';}}
