@@ -592,11 +592,15 @@ function ComidaAlex({ token, learned, onClose }) {
   );
 }
 
-/* ── ✨ Practicar (A1): "Repaso hablado" — Mr. Alex recorre TODAS las palabras de un tema completado ── */
+/* ── ✨ Practicar (A1): "Repaso de los temas aprendidos" ──
+   Cada tema completado desbloquea su repaso. Formato por palabra:
+   1) elegir la oración correcta  2) pronunciarla. Si falla → "Así no" + enseñanza con calma. */
 function RepasoAlex({ token, temas, onClose }) {
-  const [tema, setTema]           = useState(null);   // {id,name,icon,words:[{en,es}]}
+  const [tema, setTema]           = useState(null);   // {id,name,icon,words,completo}
   const [idx, setIdx]             = useState(0);
-  const [reto, setReto]           = useState(null);   // {prompt,promptEs,explic,word}
+  const [reto, setReto]           = useState(null);   // {prompt,promptEs,opts,ans,explic,word,sentences}
+  const [phase, setPhase]         = useState('select'); // 'select' (elegir oración) | 'speak' (pronunciarla)
+  const [sel, setSel]             = useState(null);   // opción incorrecta marcada (pinta rojo)
   const [orb, setOrb]             = useState('idle');
   const [bubble, setBubble]       = useState('');
   const [bType, setBType]         = useState('');
@@ -606,31 +610,34 @@ function RepasoAlex({ token, temas, onClose }) {
   useEffect(()=>()=>{ stopAlex(); window._alexListening=false; },[]);
 
   const cerrar = () => { stopAlex(); window._alexListening=false; onClose(); };
+  const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 
   const cargarReto = async (t, i, conIntro) => {
     const w = t.words[i];
-    setReto(null); setFails(0); setBType(''); setOrb('thinking');
-    setBubble('📖 Palabra ' + (i+1) + ' de ' + t.words.length + ' — preparando frase…');
+    setReto(null); setFails(0); setBType(''); setSel(null); setPhase('select'); setOrb('thinking');
+    setBubble('📖 Palabra ' + (i+1) + ' de ' + t.words.length + ' — preparando…');
     let fr = null;
     try {
       const r = await fetch(API+'/api/practice/frase',{method:'POST',headers:authH(token),body:JSON.stringify({en:w.en,es:w.es})});
       if (r.ok) fr = await r.json();
     } catch {}
-    if (!fr || !fr.prompt) fr = { prompt:'Say: "'+w.en+'"', promptEs:'Di: '+w.en+' ('+w.es+')', explic:'' };
-    setReto({ ...fr, word:w });
+    if (!fr || !fr.prompt || !Array.isArray(fr.opts) || fr.opts.length < 2 || typeof fr.ans !== 'number') {
+      fr = { prompt:'___', promptEs:'Completa con la palabra correcta.', opts:[w.en,'Goodbye','Thanks'], ans:0, explic:'"'+w.en+'" significa "'+w.es+'".' };
+    }
+    const sentences = fr.opts.map(o => cap(String(fr.prompt).replace(/_+/g, o)));
+    setReto({ ...fr, word:w, sentences });
     const habla = () => {
-      setBubble('🧩 ' + fr.prompt + (fr.promptEs ? ' — ' + fr.promptEs : ''));
-      alexSpeak('Complete the sentence: ' + String(fr.prompt).replace(/_+/g,' blank '), 0.88,
-        ()=>{ setOrb('listening'); setBubble('🎤 ' + fr.prompt + ' — di la palabra que falta.'); }, null, ()=>setOrb('speaking'));
+      setBubble('🧩 ¿Cuál oración es la correcta? Elígela abajo 👇' + (fr.promptEs ? ' · ' + fr.promptEs : ''));
+      alexSpeak('Choose the correct sentence.', 0.9, ()=>setOrb('idle'), null, ()=>setOrb('speaking'));
     };
-    if (conIntro) alexSpeak('Veamos qué aprendiste! Te diré frases y tú las completas en voz alta con las palabras del tema.', 0.98, habla, 'es', ()=>setOrb('speaking'));
+    if (conIntro) alexSpeak('Veamos qué aprendiste! Primero elige la oración correcta, y después la pronuncias como yo te enseñé.', 0.98, habla, 'es', ()=>setOrb('speaking'));
     else habla();
   };
-  const empezarTema = (t) => { setTema(t); setIdx(0); setFin(false); cargarReto(t, 0, true); };
+  const empezarTema = (t) => { if (!t.completo) return; setTema(t); setIdx(0); setFin(false); cargarReto(t, 0, true); };
   const terminar = (t) => {
     setFin(true); setOrb('speaking'); setBType('ok');
-    setBubble('🏆 ¡Repaso completado! Repasaste las ' + t.words.length + ' palabras de "' + t.name + '".');
-    alexSpeak('Felicitaciones! Completaste el repaso del tema ' + t.name + '. Excelente trabajo!', 0.98, ()=>setOrb('idle'), 'es', ()=>setOrb('speaking'));
+    setBubble('🏆 ¡Repaso completado! Elegiste y pronunciaste las oraciones de las ' + t.words.length + ' palabras de "' + t.name + '".');
+    alexSpeak('Felicitaciones! Completaste el repaso del tema ' + t.name + '. Elegiste y pronunciaste todas las oraciones. Excelente trabajo!', 0.98, ()=>setOrb('idle'), 'es', ()=>setOrb('speaking'));
   };
   const avanzar = (t, i) => {
     const next = i + 1;
@@ -639,40 +646,50 @@ function RepasoAlex({ token, temas, onClose }) {
   };
   const saltar = () => { if (!tema || fin) return; stopAlex(); avanzar(tema, idx); };
 
+  // Fase 1: seleccionar la oración correcta. Si falla → "Así no" + explicación con calma.
+  const elegir = (i) => {
+    if (!reto || phase !== 'select' || fin || listening) return;
+    if (i === reto.ans) {
+      setSel(null); setPhase('speak'); setBType('ok'); setOrb('speaking');
+      setBubble('✅ ¡Correcta! Ahora pronúnciala: "' + reto.sentences[i] + '"');
+      alexSpeak('Excellent! Now say it: ' + reto.sentences[i], 0.88, ()=>{ setOrb('listening'); setBubble('🎤 Dila tú: "' + reto.sentences[reto.ans] + '"'); setBType(''); }, null, ()=>setOrb('speaking'));
+    } else {
+      setSel(i); setFails(f=>f+1); setBType('err'); setOrb('thinking');
+      const ensena = reto.explic || ('"' + reto.word.en + '" significa "' + reto.word.es + '".');
+      setBubble('🙅 Así no. Con calma: ' + ensena + ' Inténtalo de nuevo.');
+      alexSpeak('Así no. Con calma. ' + ensena + ' Inténtalo de nuevo.', 0.96, ()=>{ setOrb('idle'); setSel(null); }, 'es', ()=>setOrb('speaking'));
+    }
+  };
+
+  // Fase 2: pronunciar la oración elegida. Si falla → "Así no" + modela despacio y normal.
   const procesar = (alts) => {
     if (!reto || !tema) return;
     const w = reto.word;
-    if (alts.some(a=>isMatch(a, w.en))) {
-      setBType('ok'); setBubble('✅ ¡Perfecto! "' + w.en + '" (' + w.es + ')'); setOrb('speaking');
-      alexSpeak('Perfect! ' + w.en + '!', 0.9, ()=>avanzar(tema, idx), null, ()=>setOrb('speaking'));
+    const frase = reto.sentences[reto.ans] || w.en;
+    const ok = alts.some(a => isMatch(a, w.en) || clean(a).includes(clean(frase)));
+    if (ok) {
+      setBType('ok'); setBubble('✅ ¡Perfecto! "' + frase + '"'); setOrb('speaking');
+      alexSpeak('Perfect!', 0.9, ()=>avanzar(tema, idx), null, ()=>setOrb('speaking'));
     } else {
-      const f = fails + 1; setFails(f); setBType('err');
-      if (f === 1) {
-        setBubble('🤔 No, así no. Piensa un poco más…');
-        alexSpeak('No, así no. Piensa un poco más.', 0.95, ()=>setOrb('listening'), 'es', ()=>setOrb('speaking'));
-      } else if (f === 2) {
-        setBubble('💡 Pista: empieza por "' + w.en[0].toUpperCase() + '", tiene ' + w.en.length + ' letras. En español: ' + w.es + '.');
-        alexSpeak('Pista: empieza por la letra ' + w.en[0] + ', y en español significa ' + w.es + '. Inténtalo otra vez.', 0.95, ()=>setOrb('listening'), 'es', ()=>setOrb('speaking'));
-      } else {
-        setBubble('🐢 Escucha: ' + w.en + ' — primero despacio, luego dila tú.');
-        alexSpeak('Escucha e intenta más suave, como yo.', 0.98, ()=>{
-          alexSpeakSlow(w.en, token, ()=>{
-            alexSpeak(w.en, 0.85, ()=>{ setOrb('listening'); setBubble('🎤 Ahora tú: ' + w.en); setBType(''); }, null, ()=>setOrb('speaking'));
-          });
-        }, 'es', ()=>setOrb('speaking'));
-      }
+      setFails(f=>f+1); setBType('err');
+      setBubble('🙅 Así no. Escucha e intenta más suave, como yo: ' + w.en);
+      alexSpeak('Así no. Escucha e intenta más suave, como yo.', 0.98, ()=>{
+        alexSpeakSlow(w.en, token, ()=>{
+          alexSpeak(frase, 0.85, ()=>{ setOrb('listening'); setBubble('🎤 Otra vez, con calma: "' + frase + '"'); setBType(''); }, null, ()=>setOrb('speaking'));
+        });
+      }, 'es', ()=>setOrb('speaking'));
     }
   };
 
   const hablar = () => {
-    if (listening || fin || !reto) return;
+    if (listening || fin || !reto || phase !== 'speak') return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { setBubble('Usa Chrome para el reconocimiento de voz.'); setBType('err'); return; }
     stopAlex(); window._alexListening = true;
     const rec = new SR();
     rec.lang='en-US'; rec.interimResults=false; rec.maxAlternatives=5;
     let timer=null;
-    rec.onstart = () => { setListening(true); setOrb('listening'); setBubble('🎙️ Escuchando… di la palabra que falta.'); setBType(''); timer=setTimeout(()=>{ try{rec.stop();}catch(e){} },10000); };
+    rec.onstart = () => { setListening(true); setOrb('listening'); setBubble('🎙️ Escuchando… di la oración.'); setBType(''); timer=setTimeout(()=>{ try{rec.stop();}catch(e){} },10000); };
     rec.onend   = () => { window._alexListening=false; setListening(false); if(timer)clearTimeout(timer); };
     rec.onerror = (e) => {
       window._alexListening=false; setListening(false); setOrb('idle'); setBType('err');
@@ -684,13 +701,14 @@ function RepasoAlex({ token, temas, onClose }) {
     try { rec.start(); } catch(err) { window._alexListening=false; setListening(false); setOrb('idle'); }
   };
 
+  const desbloqueados = temas.filter(t=>t.completo).length;
   return (
     <div style={{position:'fixed',inset:0,zIndex:9500,background:'rgba(2,6,23,.88)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',padding:12,fontFamily:"'Poppins',sans-serif"}}>
       <div style={{width:'100%',maxWidth:560,maxHeight:'92vh',overflowY:'auto',background:'#0a0f1e',border:'1px solid rgba(99,102,241,.3)',borderRadius:20,padding:'1.3rem',boxSizing:'border-box',boxShadow:'0 0 60px rgba(99,102,241,.25)',position:'relative'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
           <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
             <span style={{fontSize:'.8rem',fontWeight:700,color:'#6366f1',letterSpacing:'.08em'}}>MR. ALEX</span>
-            <span style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>🧠 Repaso hablado</span>
+            <span style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>🧠 Repaso de los temas aprendidos</span>
             {tema && !fin && <span style={{background:'rgba(16,185,129,.15)',color:'#34d399',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>{Math.min(idx+1, tema.words.length)}/{tema.words.length}</span>}
           </div>
           <button onClick={cerrar} style={{background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#ef4444',width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:12}}>✕</button>
@@ -698,26 +716,32 @@ function RepasoAlex({ token, temas, onClose }) {
 
         {temas.length === 0 ? (
           <div style={{textAlign:'center',padding:'1.6rem .4rem'}}>
-            <div style={{fontSize:'2.4rem'}}>🔒</div>
-            <div style={{color:'#e2e8f0',fontWeight:800,fontSize:'1rem',margin:'10px 0 6px'}}>Completa tu primer tema</div>
-            <div style={{color:'#94a3b8',fontSize:'.82rem',lineHeight:1.6}}>El repaso hablado se desbloquea cuando completas un tema. Mr. Alex te hará decir frases completas con TODAS las palabras que aprendiste.</div>
+            <div style={{fontSize:'2.4rem'}}>⏳</div>
+            <div style={{color:'#e2e8f0',fontWeight:800,fontSize:'1rem',margin:'10px 0 6px'}}>Cargando tus temas…</div>
+            <div style={{color:'#94a3b8',fontSize:'.82rem',lineHeight:1.6}}>Si no aparecen, cierra y vuelve a abrir el repaso.</div>
             <button onClick={cerrar} style={{marginTop:16,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',padding:'11px 22px',borderRadius:12,fontWeight:700,fontSize:'.85rem',cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Entendido</button>
           </div>
         ) : !tema ? (
           <>
-            <div style={{color:'#94a3b8',fontSize:'.8rem',lineHeight:1.6,marginBottom:14}}>Elige un tema completado. Mr. Alex dirá <b style={{color:'#c4b5fd'}}>"¡Veamos qué aprendiste!"</b> y repasarán <b style={{color:'#c4b5fd'}}>todas sus palabras</b> en frases completas.</div>
+            {desbloqueados === 0 && (
+              <div style={{display:'flex',alignItems:'center',gap:10,background:'rgba(245,158,11,.08)',border:'1px solid rgba(245,158,11,.3)',borderRadius:12,padding:'10px 13px',marginBottom:12}}>
+                <span style={{fontSize:'1.2rem'}}>🔒</span>
+                <div style={{color:'#fbbf24',fontSize:'.74rem',lineHeight:1.5,fontWeight:600}}>Completa tu primer tema con Mr. Alex para desbloquear su repaso aquí.</div>
+              </div>
+            )}
+            <div style={{color:'#94a3b8',fontSize:'.8rem',lineHeight:1.6,marginBottom:14}}>Solo repasas <b style={{color:'#c4b5fd'}}>lo que ya aprendiste</b>: cada tema completado desbloquea su campo de repaso. Eliges la <b style={{color:'#c4b5fd'}}>oración correcta</b> y luego la <b style={{color:'#c4b5fd'}}>pronuncias</b>.</div>
             <div style={{display:'flex',flexDirection:'column',gap:8}}>
               {temas.map(t=>(
-                <button key={t.id} onClick={()=>empezarTema(t)}
-                  style={{display:'flex',alignItems:'center',gap:11,background:'rgba(255,255,255,.04)',border:'1.5px solid rgba(255,255,255,.1)',borderRadius:14,padding:'11px 13px',cursor:'pointer',fontFamily:"'Poppins',sans-serif",textAlign:'left',transition:'border-color .15s'}}
-                  onMouseEnter={e=>e.currentTarget.style.borderColor='rgba(139,92,246,.6)'}
-                  onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,.1)'}>
+                <button key={t.id} onClick={()=>empezarTema(t)} disabled={!t.completo}
+                  style={{display:'flex',alignItems:'center',gap:11,background:t.completo?'rgba(255,255,255,.04)':'rgba(255,255,255,.02)',border:'1.5px solid '+(t.completo?'rgba(16,185,129,.3)':'rgba(255,255,255,.06)'),borderRadius:14,padding:'11px 13px',cursor:t.completo?'pointer':'not-allowed',fontFamily:"'Poppins',sans-serif",textAlign:'left',transition:'border-color .15s',opacity:t.completo?1:.5}}
+                  onMouseEnter={e=>{ if(t.completo) e.currentTarget.style.borderColor='rgba(139,92,246,.65)'; }}
+                  onMouseLeave={e=>{ if(t.completo) e.currentTarget.style.borderColor='rgba(16,185,129,.3)'; }}>
                   <span style={{fontSize:'1.4rem'}}>{t.icon}</span>
                   <span style={{flex:1}}>
-                    <span style={{display:'block',color:'#f1f5f9',fontWeight:700,fontSize:'.85rem'}}>{t.name}</span>
-                    <span style={{display:'block',color:'#94a3b8',fontSize:'.68rem',marginTop:1}}>{t.words.length} palabras · ✅ completado</span>
+                    <span style={{display:'block',color:t.completo?'#f1f5f9':'#94a3b8',fontWeight:700,fontSize:'.85rem'}}>{t.name}</span>
+                    <span style={{display:'block',color:t.completo?'#34d399':'#64748b',fontSize:'.68rem',marginTop:1}}>{t.completo ? (t.words.length+' palabras · ✅ desbloqueado') : ('🔒 Completa este tema para desbloquear su repaso')}</span>
                   </span>
-                  <span style={{color:'#475569'}}>›</span>
+                  <span style={{color:'#475569'}}>{t.completo?'›':'🔒'}</span>
                 </button>
               ))}
             </div>
@@ -728,13 +752,25 @@ function RepasoAlex({ token, temas, onClose }) {
               <div style={{width:(fin?100:Math.round((idx/tema.words.length)*100))+'%',height:'100%',background:'linear-gradient(90deg,#6366f1,#06b6d4,#10b981)',transition:'width .4s ease'}}/>
             </div>
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',marginBottom:12}}>
-              <MrAlexOrb size={120} state={orb}/>
+              <MrAlexOrb size={110} state={orb}/>
               <div style={{fontSize:'.62rem',color:'#64748b',marginTop:6}}>{orb==='idle'?'listo':orb==='listening'?'escuchando...':orb==='speaking'?'hablando...':'procesando...'}</div>
-              <div style={{background:bType==='ok'?'rgba(16,185,129,.1)':bType==='err'?'rgba(239,68,68,.1)':'rgba(99,102,241,.08)',border:'1px solid '+(bType==='ok'?'#10b981':bType==='err'?'#ef4444':'rgba(99,102,241,.25)'),borderRadius:14,padding:'10px 14px',fontSize:'.8rem',color:bType==='ok'?'#34d399':bType==='err'?'#f87171':'#e2e8f0',maxWidth:400,textAlign:'center',marginTop:10,lineHeight:1.5}}>{bubble}</div>
+              <div style={{background:bType==='ok'?'rgba(16,185,129,.1)':bType==='err'?'rgba(239,68,68,.1)':'rgba(99,102,241,.08)',border:'1px solid '+(bType==='ok'?'#10b981':bType==='err'?'#ef4444':'rgba(99,102,241,.25)'),borderRadius:14,padding:'10px 14px',fontSize:'.8rem',color:bType==='ok'?'#34d399':bType==='err'?'#f87171':'#e2e8f0',maxWidth:420,textAlign:'center',marginTop:10,lineHeight:1.5}}>{bubble}</div>
             </div>
-            {!fin && reto && (
-              <div style={{background:'#020617',border:'1px solid rgba(99,102,241,.2)',borderRadius:14,padding:'0.9rem',textAlign:'center',marginBottom:12}}>
-                <div style={{fontSize:'1.05rem',fontWeight:800,color:'#f1f5f9',lineHeight:1.5}}>{reto.prompt}</div>
+            {!fin && reto && phase==='select' && (
+              <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:12}}>
+                {reto.sentences.map((s,i)=>(
+                  <button key={i} onClick={()=>elegir(i)}
+                    style={{textAlign:'left',background:sel===i?'rgba(239,68,68,.12)':'#020617',border:'1.5px solid '+(sel===i?'rgba(239,68,68,.6)':'rgba(99,102,241,.25)'),borderRadius:12,padding:'12px 14px',cursor:'pointer',fontFamily:"'Poppins',sans-serif",color:sel===i?'#fca5a5':'#e2e8f0',fontSize:'.86rem',fontWeight:600,lineHeight:1.45,transition:'border-color .15s,background .15s'}}
+                    onMouseEnter={e=>{ if(sel!==i) e.currentTarget.style.borderColor='rgba(139,92,246,.65)'; }}
+                    onMouseLeave={e=>{ if(sel!==i) e.currentTarget.style.borderColor='rgba(99,102,241,.25)'; }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!fin && reto && phase==='speak' && (
+              <div style={{background:'#020617',border:'1px solid rgba(16,185,129,.35)',borderRadius:14,padding:'0.9rem',textAlign:'center',marginBottom:12}}>
+                <div style={{fontSize:'1rem',fontWeight:800,color:'#6ee7b7',lineHeight:1.5}}>🗣️ {reto.sentences[reto.ans]}</div>
                 {reto.promptEs && <div style={{fontSize:'.72rem',color:'#94a3b8',marginTop:4}}>{reto.promptEs}</div>}
               </div>
             )}
@@ -745,10 +781,12 @@ function RepasoAlex({ token, temas, onClose }) {
               </div>
             ) : (
               <div style={{display:'flex',gap:8}}>
-                <button onClick={hablar} disabled={listening || !reto}
-                  style={{flex:2,background:(listening||!reto)?'#334155':'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',color:'#fff',border:'none',padding:'13px',borderRadius:12,fontWeight:700,fontSize:'.88rem',cursor:(listening||!reto)?'default':'pointer',fontFamily:"'Poppins',sans-serif",boxShadow:(listening||!reto)?'none':'0 0 16px rgba(139,92,246,.4)'}}>
-                  {listening?'🎙️ Escuchando…':'🎤 Decir la palabra'}
-                </button>
+                {phase==='speak' && (
+                  <button onClick={hablar} disabled={listening || !reto}
+                    style={{flex:2,background:(listening||!reto)?'#334155':'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',color:'#fff',border:'none',padding:'13px',borderRadius:12,fontWeight:700,fontSize:'.88rem',cursor:(listening||!reto)?'default':'pointer',fontFamily:"'Poppins',sans-serif",boxShadow:(listening||!reto)?'none':'0 0 16px rgba(139,92,246,.4)'}}>
+                    {listening?'🎙️ Escuchando…':'🎤 Pronunciar la oración'}
+                  </button>
+                )}
                 <button onClick={saltar} style={{flex:1,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.14)',color:'#94a3b8',padding:'13px',borderRadius:12,fontWeight:600,fontSize:'.78rem',cursor:'pointer',fontFamily:"'Poppins',sans-serif"}}>Saltar ⏭</button>
               </div>
             )}
@@ -3410,8 +3448,8 @@ const handleAuth = async(e) => {
     const comp = progTemas[t.id]?.palabrasCompletadas || [];
     return (vocabData[t.id]||[]).filter(w => comp.includes(w.en));
   });
-  const temasCompletos = TOPICS.filter(t => progTemas[t.id]?.completo && (vocabData[t.id]||[]).length > 0)
-    .map(t => ({ id:t.id, name:t.name, icon:t.icon, words: vocabData[t.id]||[] }));
+  const temasRepaso = TOPICS.filter(t => (vocabData[t.id]||[]).length > 0)
+    .map(t => ({ id:t.id, name:t.name, icon:t.icon, words: vocabData[t.id]||[], completo: !!progTemas[t.id]?.completo }));
 
   if (screen2==='quiz') return (
     <LevelQuiz
@@ -3685,7 +3723,7 @@ const handleAuth = async(e) => {
         </div>
       )}
       {comidaOpen && <ComidaAlex token={token} learned={learnedWords} onClose={()=>setComidaOpen(false)}/>}
-      {repasoOpen && <RepasoAlex token={token} temas={temasCompletos} onClose={()=>setRepasoOpen(false)}/>}
+      {repasoOpen && <RepasoAlex token={token} temas={temasRepaso} onClose={()=>setRepasoOpen(false)}/>}
       <div className="aq-bar" style={{background:'rgba(10,14,26,.45)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.8rem',borderBottom:'1px solid rgba(255,255,255,0.06)',position:'sticky',top:0,zIndex:100}}>
         <div style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}} onClick={()=>setScreen('home')}>
           <div style={{width:34,height:34,background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.95rem',boxShadow:'0 0 16px rgba(99,102,241,.4)'}}>🎓</div>
@@ -3761,7 +3799,7 @@ const handleAuth = async(e) => {
                     onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
                     style={{display:'flex',alignItems:'center',gap:11,padding:10,borderRadius:12,cursor:'pointer',transition:'background .12s'}}>
                     <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem'}}>🧠</div>
-                    <div style={{flex:1}}><div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9'}}>Repaso hablado</div><div style={{fontSize:'.65rem',color:'#94a3b8'}}>¡Veamos qué aprendiste!</div></div>
+                    <div style={{flex:1}}><div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9'}}>Repaso de temas aprendidos</div><div style={{fontSize:'.65rem',color:'#94a3b8'}}>Solo lo que ya aprendiste</div></div>
                     <span style={{color:'#475569',fontSize:'.8rem'}}>›</span>
                   </div>
                   <div style={{height:1,background:'rgba(255,255,255,.07)',margin:'6px 8px'}}/>
