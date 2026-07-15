@@ -3398,7 +3398,7 @@ const handleAuth = async(e) => {
 
   // ✨ Repaso (A1): temas del nivel con su estado (cada tema completado desbloquea su rutina de repaso)
   const temasRepaso = TOPICS.filter(t => (vocabData[t.id]||[]).length > 0)
-    .map(t => ({ id:t.id, name:t.name, icon:t.icon, words: vocabData[t.id]||[], completo: !!progTemas[t.id]?.completo }));
+    .map(t => ({ id:t.id, name:t.name, icon:t.icon, words: vocabData[t.id]||[], completo: esAdmin || !!progTemas[t.id]?.completo }));
   // "Todos los temas" se desbloquea al completar TODAS las lecciones del nivel
   const todosTemasCompletos = esAdmin || (TOPICS.length > 0 && TOPICS.every(t => progTemas[t.id]?.completo));
   const temaTodos = (()=>{ const seen = new Set(); return { id:'__todos', name:'Todos los temas', icon:'🌟', completo:true,
