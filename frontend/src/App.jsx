@@ -204,6 +204,7 @@ function alexSpeakSlow(text, token, onEnd) {
     if (!blob) { fallback(); return; }
     const a = new Audio(URL.createObjectURL(blob));
     _currentAudio = a;
+    a.onplay = () => { clearTimeout(guard); guard = setTimeout(finish, ((isFinite(a.duration) && a.duration > 0 ? a.duration : 7) * 1000) + 5000); };
     a.onended = finish; a.onerror = finish;
     a.play().catch(finish);
   }).catch(fallback);
@@ -251,7 +252,12 @@ async function alexSpeakBilingual(enText, esText, token, onEnd, onStart) {
       if (mySeq !== _alexCallSeq || window._alexListening) { finish(); return; }
       const audio = new Audio(url);
       _currentAudio = audio;
-      audio.onplay = fireStart;
+      audio.onplay = () => {
+        fireStart();
+        // watchdog rodante: se renueva con cada audio de la secuencia para no cortar a mitad
+        const durMs = (isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 8) * 1000;
+        if (guard) clearTimeout(guard); guard = setTimeout(finish, durMs + 8000);
+      };
       audio.onended = next;
       audio.onerror = next;
       audio.play().catch(next); // si un audio falla, sigue con el resto
@@ -309,7 +315,7 @@ function alexSpeak(text, rate, onEnd, lang, onStart) {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang === 'es' ? 'es-ES' : 'en-US'; u.rate=rate || 0.80; u.pitch=1.0; u.volume=1;
-    u.onstart = fireStart;
+    u.onstart = () => { fireStart(); clearTimeout(guard); guard = setTimeout(finish, Math.max(9000, text.length * 130)); };
     u.onend = finish; u.onerror = finish;
     window.speechSynthesis.speak(u);
   };
@@ -319,7 +325,13 @@ function alexSpeak(text, rate, onEnd, lang, onStart) {
     const audio = new Audio(url);
     audio.playbackRate = rate || 0.95;
     _currentAudio = audio;
-    audio.onplay = fireStart;
+    // El watchdog se recalcula al EMPEZAR a sonar, según la duración real del audio:
+    // antes contaba 9s desde la petición y cortaba frases largas a la mitad.
+    audio.onplay = () => {
+      fireStart();
+      const durMs = (isFinite(audio.duration) && audio.duration > 0 ? audio.duration : Math.max(3, text.length * 0.09)) * 1000 / (audio.playbackRate || 1);
+      clearTimeout(guard); guard = setTimeout(finish, durMs + 5000);
+    };
     audio.onended = finish;
     audio.onerror = finish;
     audio.play().catch(finish);
@@ -602,7 +614,13 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel }) {
       } else if (e.error==='not-allowed') { setBType('err'); setBubble('🎤 Permite el micrófono en tu navegador y toca el botón.'); }
       else { setBType('err'); setBubble('🎤 Toca el botón 🎤 para responder.'); }
     };
-    rec.onresult = (e) => { got=true; setOrb('thinking'); procesarCon(r, Array.from(e.results[0]).map(x=>x.transcript)); };
+    rec.onresult = (e) => {
+      got = true;
+      window._alexListening = false;   // resultado recibido: Mr. Alex puede responder AL INSTANTE (sin este reset, su respuesta se saltaba)
+      try { rec.stop(); } catch (err) {}
+      setOrb('thinking');
+      procesarCon(r, Array.from(e.results[0]).map(x=>x.transcript));
+    };
     try { rec.start(); } catch(err) { window._alexListening=false; setListening(false); setOrb('idle'); setBubble('🎤 Toca el botón 🎤 para responder.'); }
   };
 
@@ -3289,6 +3307,7 @@ const handleAuth = async(e) => {
       }
     };
     rec.onresult = async(e) => {
+      window._alexListening = false;   // resultado recibido: la respuesta de Mr. Alex no debe saltarse por la carrera con onend
       setOrbState('thinking');
       const alts = Array.from(e.results[0]).map(r=>r.transcript);
       const hit = alts.some(a=>isMatch(a, word.en));
