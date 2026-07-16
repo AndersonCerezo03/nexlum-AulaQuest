@@ -692,6 +692,20 @@ function Home({ onEmpezar, user, onLogout, onAdmin }) {
   const [cursosOpen, setCursosOpen] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
   const [showPerfil, setShowPerfil] = useState(false);
+  // Buzón de sugerencias → llega a hola@nexlum.co
+  const [sug, setSug]           = useState({ nombre:'', email:'', mensaje:'' });
+  const [sugState, setSugState] = useState('');   // ''|'sending'|'sent'
+  const [sugErr, setSugErr]     = useState('');
+  const enviarSugerencia = async () => {
+    if ((sug.mensaje || '').trim().length < 5) { setSugErr('Escribe tu sugerencia (mínimo 5 caracteres).'); return; }
+    setSugErr(''); setSugState('sending');
+    try {
+      const r = await fetch(API + '/api/sugerencias', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(sug) });
+      const d = await r.json().catch(()=>({}));
+      if (r.ok) setSugState('sent');
+      else { setSugState(''); setSugErr(d.msg || 'No se pudo enviar. Intenta de nuevo.'); }
+    } catch { setSugState(''); setSugErr('Error de conexión. Intenta de nuevo.'); }
+  };
   const NIVEL_INFO = { A1:['Principiante','#10b981'], A2:['Elemental','#06b6d4'], B1:['Intermedio','#6366f1'], B2:['Intermedio alto','#8b5cf6'], C1:['Avanzado','#d946ef'], C2:['Maestría','#f59e0b'] };
   const iniciales = (n) => (n||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const canvasRef = useRef(null);
@@ -955,6 +969,39 @@ function Home({ onEmpezar, user, onLogout, onAdmin }) {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* ── Buzón de sugerencias (llega a hola@nexlum.co) ── */}
+      <section style={{padding:'3rem 2rem 3.5rem',position:'relative',zIndex:1}}>
+        {(()=>{ const inp = { flex:'1 1 200px', background:'#0a0e1a', border:'1px solid rgba(139,92,246,.25)', borderRadius:10, color:'#e2e8f0', padding:'11px 12px', fontSize:'.85rem', outline:'none', fontFamily:"'Poppins',sans-serif", boxSizing:'border-box' }; return (
+        <div style={{maxWidth:640,margin:'0 auto',background:'linear-gradient(180deg,rgba(24,29,49,.85),rgba(13,17,28,.9))',border:'1px solid rgba(139,92,246,.25)',borderRadius:22,padding:'2rem',boxShadow:'0 20px 60px rgba(0,0,0,.4)'}}>
+          <div style={{textAlign:'center',marginBottom:'1.2rem'}}>
+            <div style={{fontSize:'2rem'}}>📮</div>
+            <h3 style={{margin:'6px 0 4px',fontSize:'1.25rem',fontWeight:800,background:'linear-gradient(135deg,#818cf8,#c4b5fd)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Buzón de sugerencias</h3>
+            <p style={{color:'#94a3b8',fontSize:'.85rem',margin:0}}>Cuéntanos qué mejorarías de AulaQuest. Tu mensaje llega directo a nuestro equipo.</p>
+          </div>
+          {sugState==='sent' ? (
+            <div style={{textAlign:'center',padding:'1rem 0'}}>
+              <div style={{fontSize:'2rem'}}>✅</div>
+              <p style={{color:'#34d399',fontWeight:700,margin:'8px 0 4px'}}>¡Gracias! Recibimos tu sugerencia.</p>
+              <p style={{color:'#94a3b8',fontSize:'.8rem',margin:0}}>Nuestro equipo la leerá con atención.</p>
+            </div>
+          ) : (
+            <>
+              <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:10}}>
+                <input value={sug.nombre} onChange={e=>setSug({...sug,nombre:e.target.value})} placeholder="Tu nombre (opcional)" maxLength={80} style={inp}/>
+                <input value={sug.email} onChange={e=>setSug({...sug,email:e.target.value})} placeholder="Tu correo (opcional)" maxLength={120} style={inp}/>
+              </div>
+              <textarea value={sug.mensaje} onChange={e=>setSug({...sug,mensaje:e.target.value})} placeholder="Escribe aquí tu sugerencia…" rows={4} maxLength={2000} style={{...inp,width:'100%',resize:'vertical',minHeight:110}}/>
+              {sugErr && <div style={{color:'#f87171',fontSize:'.78rem',fontWeight:600,margin:'8px 0 0'}}>{sugErr}</div>}
+              <button onClick={enviarSugerencia} disabled={sugState==='sending'}
+                style={{marginTop:12,width:'100%',background:sugState==='sending'?'#334155':'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',padding:'13px',borderRadius:12,fontWeight:700,fontSize:'.92rem',cursor:sugState==='sending'?'default':'pointer',fontFamily:"'Poppins',sans-serif",boxShadow:'0 4px 18px rgba(99,102,241,.3)'}}>
+                {sugState==='sending' ? 'Enviando…' : '📨 Enviar sugerencia'}
+              </button>
+            </>
+          )}
+        </div>
+        ); })()}
       </section>
 
       <footer style={{borderTop:'1px solid rgba(99,102,241,.15)',background:'linear-gradient(180deg,rgba(13,17,28,.4),rgba(9,11,21,.9))',padding:'3.5rem 2rem 2rem',position:'relative',zIndex:1}}>
