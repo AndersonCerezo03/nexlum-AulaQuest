@@ -7,9 +7,12 @@ const TRIAL_DAYS = 10;
 
 // ── Energía: 1 token se recarga cada 15 min, hasta el máximo ──
 const REFILL_MS = 15 * 60 * 1000;
+const ENERGY_MAX = 25;   // crédito de energía para practicar en todas las aulas (más de 24)
+function maxDe(user) { return Math.max(user.energyMax || 0, ENERGY_MAX); }
 function refillEnergy(user) {
-  if (user.isPremium || user.role === 'admin') { user.energyTokens = user.energyMax || 5; return; }
-  const max = user.energyMax || 5;
+  if (user.isPremium || user.role === 'admin') { user.energyTokens = maxDe(user); return; }
+  const max = maxDe(user);
+  if (user.energyMax !== max) user.energyMax = max;             // sube el tope guardado a 25 automáticamente
   if (user.energyTokens == null) user.energyTokens = max;
   if (user.energyTokens >= max) { user.energyUpdatedAt = new Date(); return; }
   const base = user.energyUpdatedAt ? new Date(user.energyUpdatedAt).getTime() : Date.now();
@@ -20,7 +23,7 @@ function refillEnergy(user) {
   }
 }
 function energyPayload(user) {
-  const max = user.energyMax || 5;
+  const max = maxDe(user);
   const ilimitado = user.isPremium || user.role === 'admin';
   let nextMs = 0;
   if (!ilimitado && user.energyTokens < max) {

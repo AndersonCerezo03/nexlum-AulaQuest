@@ -2867,7 +2867,7 @@ export default function App() {
   const [correct,   setCorrect]   = useState(0);
   const [total,     setTotal]     = useState(0);
   const [totalXP,   setTotalXP]   = useState(0);
-  const [energy,    setEnergy]    = useState({ tokens: 5, max: 5, nextMs: 0, ilimitado: false }); // energía/tokens
+  const [energy,    setEnergy]    = useState({ tokens: 25, max: 25, nextMs: 0, ilimitado: false }); // energía/tokens (crédito 25)
   const [fraseReto, setFraseReto] = useState(null);   // reto "completa la frase"
   const [temaEjemplos, setTemaEjemplos] = useState([]); // frases de ejemplo del tema abierto
   const [lvlUp,     setLvlUp]     = useState(false);
