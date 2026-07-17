@@ -515,12 +515,15 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel }) {
   const [listening, setListening] = useState(false);
   const [fails, setFails]         = useState(0);
   const [fin, setFin]             = useState(false);
+  const failsRef = useRef(0);   // intentos fallidos de la palabra ACTUAL (ref: sin closures viejos)
+  useEffect(()=>{ if (token) window._alexToken = token; },[token]);   // asegura la voz de Mr. Alex en el repaso
   useEffect(()=>()=>{ stopAlex(); window._alexListening=false; },[]);
   const cerrar = () => { stopAlex(); window._alexListening=false; onClose(); };
   const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 
   const cargarReto = async (t, i, conIntro) => {
     const w = t.words[i];
+    failsRef.current = 0;
     setReto(null); setFails(0); setBType(''); setOrb('thinking');
     setBubble('📖 Palabra ' + (i+1) + ' de ' + t.words.length + ' — preparando…');
     const tok = window._alexToken || token;
@@ -534,7 +537,8 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel }) {
       frase = cap(String(fr.prompt).replace(/_+/g, fr.opts[fr.ans] || w.en)); fraseEs = fr.promptEs || '';
     }
     if (!frase) { frase = w.en; fraseEs = w.es; }
-    const r = { word:w, frase, fraseEs };
+    // r lleva el tema y el índice REALES: el avance nunca depende de estado congelado (fix del bucle "me la repite")
+    const r = { word:w, frase, fraseEs, t, i };
     setReto(r);
     ttsBlob('Repeat after me: ' + frase, 'en', tok);   // precarga: enseñanza de esta palabra…
     ttsBlob(w.en, 'slow', tok);                        // …su corrección lenta…
@@ -561,12 +565,12 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel }) {
     if (next < t.words.length) { setIdx(next); cargarReto(t, next, false); }
     else { setIdx(next); terminar(t); }
   };
-  const saltar = () => { if (!tema || fin) return; stopAlex(); window._alexListening=false; avanzar(tema, idx); };
+  const saltar = () => { if (!tema || fin) return; stopAlex(); window._alexListening=false; if (reto && reto.t) avanzar(reto.t, reto.i); else avanzar(tema, idx); };
   useEffect(()=>{ if (autoTema) empezarTema(autoTema); },[]);   // "Todos los temas": entra directo sin lista
 
-  // Validación según el aula
+  // Validación según el aula — usa r.t / r.i REALES (nunca estado congelado de React)
   const procesarCon = (r, alts) => {
-    if (!tema) return;
+    if (!r || !r.t) return;
     const w = r.word, frase = r.frase;
     const partes = clean(frase).split(/\s+/).filter(x => x.length > 2);
     const ratio = (a) => { if (!partes.length) return 1; const tx = ' ' + clean(a) + ' '; return partes.filter(x => tx.includes(x)).length / partes.length; };
@@ -577,14 +581,20 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel }) {
     // acepta la oración casi completa aunque la palabra se transcriba distinto.
     const ok = wordHit || best >= (nivelIdx >= 4 ? 0.55 : 0.45);
     if (ok) {
-      setBType('ok'); setBubble('✅ ¡Perfecto! "' + frase + '"'); setOrb('speaking');
-      alexSpeak('Perfect!', 0.9, ()=>avanzar(tema, idx), null, ()=>setOrb('speaking'));
+      failsRef.current = 0;
+      setBType('ok'); setBubble('✅ ¡Perfecto! "' + frase + '" — ¡sigamos!'); setOrb('speaking');
+      alexSpeak('Perfect!', 0.9, ()=>avanzar(r.t, r.i), null, ()=>setOrb('speaking'));
     } else {
-      // ENSEÑA y corrige con calma: modela la palabra despacio, luego la oración, y escucha otra vez
-      const f = fails + 1; setFails(f); setBType('err');
+      // ENSEÑA paso a paso y da ánimos: mensaje según el intento → palabra DESPACIO → oración normal → escucha otra vez
+      const f = ++failsRef.current; setFails(f); setBType('err');
       setBubble('🙅 Así no. Escucha cómo se dice y repite conmigo: ' + w.en + ' — "' + frase + '"');
-      alexSpeak(f >= 2 ? 'Tranquilo, vamos otra vez. Escucha despacio y repite suave, como yo.' : 'Así no. Escucha e intenta más suave, como yo.', 0.98, ()=>{
+      const animo = f >= 3 ? 'No te rindas, ya casi lo tienes. Escucha una vez más, despacio, y repite conmigo.'
+                : f === 2 ? 'Casi. Vas muy bien, tranquilo. Escucha despacio y repite suave, como yo.'
+                : 'Así no. Escucha e intenta más suave, como yo. Tú puedes.';
+      alexSpeak(animo, 0.98, ()=>{
+        setBubble('🐢 ' + w.en + ' — despacio…');
         alexSpeakSlow(w.en, token, ()=>{
+          setBubble('🔊 "' + frase + '" — ahora normal');
           alexSpeak(frase, 0.85, ()=>{ setBubble('🎤 Ahora tú, con calma: "' + frase + '"'); setBType(''); hablarCon(r); }, null, ()=>setOrb('speaking'));
         });
       }, 'es', ()=>setOrb('speaking'));
