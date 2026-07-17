@@ -572,24 +572,20 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel }) {
     const ratio = (a) => { if (!partes.length) return 1; const tx = ' ' + clean(a) + ' '; return partes.filter(x => tx.includes(x)).length / partes.length; };
     const best = alts.reduce((m, a) => Math.max(m, ratio(a)), 0);
     const wordHit = alts.some(a => isMatch(a, w.en));
-    const ok = nivelIdx <= 1 ? (wordHit || best >= 0.5)
-             : nivelIdx <= 3 ? (best >= 0.6 || (wordHit && best >= 0.35))
-             : (best >= 0.75 || (wordHit && best >= 0.55));
+    // ACEPTA generoso: decir bien la palabra clave cuenta en TODOS los niveles
+    // (el reconocedor de voz es ruidoso; el tutor enseña, NO bloquea). También
+    // acepta la oración casi completa aunque la palabra se transcriba distinto.
+    const ok = wordHit || best >= (nivelIdx >= 4 ? 0.55 : 0.45);
     if (ok) {
       setBType('ok'); setBubble('✅ ¡Perfecto! "' + frase + '"'); setOrb('speaking');
       alexSpeak('Perfect!', 0.9, ()=>avanzar(tema, idx), null, ()=>setOrb('speaking'));
-    } else if (wordHit && nivelIdx >= 2) {
-      setFails(f=>f+1); setBType('err');
-      setBubble('🙅 Bien la palabra, pero en tu nivel va la oración COMPLETA: "' + frase + '"');
-      alexSpeak('Bien la palabra, pero di la oración completa, como yo.', 0.98, ()=>{
-        alexSpeak(frase, 0.85, ()=>{ setBubble('🎤 Completa: "' + frase + '"'); setBType(''); hablarCon(r); }, null, ()=>setOrb('speaking'));
-      }, 'es', ()=>setOrb('speaking'));
     } else {
-      setFails(f=>f+1); setBType('err');
-      setBubble('🙅 Así no. Escucha e intenta más suave, como yo: ' + w.en);
-      alexSpeak('Así no. Escucha e intenta más suave, como yo.', 0.98, ()=>{
+      // ENSEÑA y corrige con calma: modela la palabra despacio, luego la oración, y escucha otra vez
+      const f = fails + 1; setFails(f); setBType('err');
+      setBubble('🙅 Así no. Escucha cómo se dice y repite conmigo: ' + w.en + ' — "' + frase + '"');
+      alexSpeak(f >= 2 ? 'Tranquilo, vamos otra vez. Escucha despacio y repite suave, como yo.' : 'Así no. Escucha e intenta más suave, como yo.', 0.98, ()=>{
         alexSpeakSlow(w.en, token, ()=>{
-          alexSpeak(frase, 0.85, ()=>{ setBubble('🎤 Otra vez, con calma: "' + frase + '"'); setBType(''); hablarCon(r); }, null, ()=>setOrb('speaking'));
+          alexSpeak(frase, 0.85, ()=>{ setBubble('🎤 Ahora tú, con calma: "' + frase + '"'); setBType(''); hablarCon(r); }, null, ()=>setOrb('speaking'));
         });
       }, 'es', ()=>setOrb('speaking'));
     }
