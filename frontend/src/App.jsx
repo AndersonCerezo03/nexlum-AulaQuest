@@ -348,7 +348,7 @@ function alexSpeak(text, rate, onEnd, lang, onStart) {
   if (_ttsCache[cacheKey]) { playUrl(_ttsCache[cacheKey]); return; }
 
   // Llamar al backend de TTS (con fallback a la voz del navegador si falla)
-  fetch(API+endpoint, {
+  const pedirTTS = () => fetch(API+endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
     body: JSON.stringify({ text }),
@@ -356,6 +356,17 @@ function alexSpeak(text, rate, onEnd, lang, onStart) {
   .then(r => { if (!r.ok) throw new Error('TTS error'); return r.blob(); })
   .then(blob => { const url = URL.createObjectURL(blob); _ttsCache[cacheKey] = url; playUrl(url); })
   .catch(speakWS);
+
+  // Si este audio fue PRECARGADO con ttsBlob (repaso/práctica), suena AL INSTANTE sin re-descargar.
+  // (Antes alexSpeak ignoraba esa precarga y volvía a pedir el audio: esa era la demora.)
+  const blobKey = (lang === 'es' ? 'es:' : 'en:') + text;
+  if (_ttsBlobCache[blobKey]) {
+    _ttsBlobCache[blobKey]
+      .then(b => { if (mySeq !== _alexCallSeq) { finish(); return; } if (b) { const url = URL.createObjectURL(b); _ttsCache[cacheKey] = url; playUrl(url); } else pedirTTS(); })
+      .catch(pedirTTS);
+    return;
+  }
+  pedirTTS();
 }
 
 function MrAlexOrb({ size, state }) {
@@ -538,8 +549,13 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel, nombre }) 
     }
     if (!frase) { frase = w.en; fraseEs = w.es; }
     // r lleva el tema y el índice REALES: el avance nunca depende de estado congelado (fix del bucle "me la repite")
-    const r = { word:w, frase, fraseEs, explic: (ej && ej.explicacion) ? String(ej.explicacion) : '', t, i };
+    const nP = (nombre || '').trim() || 'campeón';
+    const abre = ['¡Perfecto, ' + nP + '!', '¡Muy bien, ' + nP + '!', '¡Excelente, ' + nP + '!'][i % 3];
+    const explic = (ej && ej.explicacion) ? String(ej.explicacion) : '';
+    const praise = abre + ' Dijiste: ' + (fraseEs || w.es) + '.' + (explic ? ' ' + explic : '') + ' ¡Sigamos!';
+    const r = { word:w, frase, fraseEs, explic, abre, praise, t, i };
     setReto(r);
+    ttsBlob(praise, 'es', tok);                        // felicitación en español lista ANTES de que hable
     ttsBlob(w.en, 'en', tok); ttsBlob(w.es, 'es', tok);           // palabra + significado
     ttsBlob('Repeat after me: ' + frase, 'en', tok);   // precarga: enseñanza de esta palabra…
     ttsBlob('Perfect! You said: ' + frase, 'en', tok); // …la felicitación con lo que dijo…
@@ -558,7 +574,23 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel, nombre }) 
     if (conIntro) alexSpeak('Veamos qué aprendiste! Te recuerdo cada palabra con su significado y su ejemplo, y tú lo repites. Escucha!', 0.98, dila, 'es', ()=>setOrb('speaking'));
     else dila();
   };
-  const empezarTema = (t) => { if (!t.completo) return; setTema(t); setIdx(0); setFin(false); cargarReto(t, 0, true); };
+  const empezarTema = (t) => {
+    if (!t.completo) return;
+    setTema(t); setIdx(0); setFin(false);
+    // Precarga TODAS las frases fijas de Mr. Alex (correcciones, ánimos, silencio) para que responda sin demora
+    const tok = window._alexToken || token;
+    const n0 = (nombre || '').trim(); const nP = n0 || 'campeón';
+    [
+      'Veamos qué aprendiste! Te recuerdo cada palabra con su significado y su ejemplo, y tú lo repites. Escucha!',
+      'Así no. Escucha e intenta más suave, como yo. Tú puedes.',
+      'Casi. Vas muy bien, tranquilo. Escucha despacio y repite suave, como yo.',
+      'No te rindas, ya casi lo tienes. Escucha una vez más, despacio, y repite conmigo.',
+      (n0 ? n0 + ', no' : 'No') + ' te escuché. Tranquilo, intentemos de nuevo. Escucha.',
+      'Bien la palabra, ' + nP + '. Ahora dila completa. Escucha y repite conmigo.',
+    ].forEach(x => ttsBlob(x, 'es', tok));
+    ttsBlob('Perfect!', 'en', tok);
+    cargarReto(t, 0, true);
+  };
   const terminar = (t) => {
     setFin(true); setOrb('speaking'); setBType('ok');
     setBubble('🏆 ¡Repaso completado! Pronunciaste los ejemplos de las ' + t.words.length + ' palabras de "' + t.name + '".');
@@ -592,8 +624,8 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel, nombre }) 
     if (fraseOk || (soloPalabra && failsRef.current >= 2)) {
       failsRef.current = 0;
       // SIEMPRE felicita con el nombre y explica TODA la oración que acaba de pronunciar
-      const abre = ['¡Perfecto, ' + n + '!', '¡Muy bien, ' + n + '!', '¡Excelente, ' + n + '!'][r.i % 3];
-      const pr = abre + ' Dijiste: ' + (r.fraseEs || w.es) + '.' + (r.explic ? ' ' + r.explic : '') + ' ¡Sigamos!';
+      const abre = r.abre || ('¡Perfecto, ' + n + '!');
+      const pr = r.praise || (abre + ' Dijiste: ' + (r.fraseEs || w.es) + '.' + (r.explic ? ' ' + r.explic : '') + ' ¡Sigamos!');
       setBType('ok'); setBubble('🎉 ' + abre + ' "' + frase + '" = ' + (r.fraseEs || w.es) + (r.explic ? ' · 📘 ' + r.explic : ''));
       setOrb('speaking');
       // Le repite en inglés TODO lo que acaba de decir, y luego se lo explica en español
