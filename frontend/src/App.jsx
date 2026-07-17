@@ -503,7 +503,7 @@ function getRutina(t) {
    SIN conversación: Mr. Alex ENSEÑA cada ejemplo visto (de la BD) → el alumno lo repite →
    él valida según el nivel. Nunca se queda callado: tras enseñar queda escuchando solo,
    y los audios repetidos van cacheados para responder rápido. */
-function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel }) {
+function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel, nombre }) {
   const NIVEL_IDX = { A1:0, A2:1, B1:2, B2:3, C1:4, C2:5 };
   const nivelIdx = NIVEL_IDX[nivel] ?? 0;          // A1-A2: palabra clave · B1-B2: media oración · C1-C2: casi completa
   const [tema, setTema]           = useState(null);
@@ -540,18 +540,21 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel }) {
     // r lleva el tema y el índice REALES: el avance nunca depende de estado congelado (fix del bucle "me la repite")
     const r = { word:w, frase, fraseEs, t, i };
     setReto(r);
+    ttsBlob(w.en, 'en', tok); ttsBlob(w.es, 'es', tok);           // palabra + significado
     ttsBlob('Repeat after me: ' + frase, 'en', tok);   // precarga: enseñanza de esta palabra…
     ttsBlob(w.en, 'slow', tok);                        // …su corrección lenta…
-    const nx = t.words[i+1]; if (nx) ttsBlob(nx.en, 'en', tok);   // …y adelanta la siguiente
+    const nx = t.words[i+1]; if (nx) { ttsBlob(nx.en, 'en', tok); ttsBlob(nx.es, 'es', tok); }   // …y adelanta la siguiente
     ensenar(r, conIntro);
   };
-  // Mr. Alex enseña el ejemplo y queda escuchando de una (no se queda callado)
+  // Mr. Alex enseña COMPLETO: palabra (EN) → significado (ES) → palabra otra vez → oración de ejemplo. Y queda escuchando.
   const ensenar = (r, conIntro) => {
     const dila = () => {
-      setBubble('🗣️ "' + r.frase + '"' + (r.fraseEs ? ' — ' + r.fraseEs : ''));
-      alexSpeak('Repeat after me: ' + r.frase, 0.88, ()=>{ setBubble('🎤 Repítela tú: "' + r.frase + '"'); setBType(''); hablarCon(r); }, null, ()=>setOrb('speaking'));
+      setBubble('🗣️ ' + r.word.en + ' = ' + r.word.es + ' — "' + r.frase + '"' + (r.fraseEs ? ' (' + r.fraseEs + ')' : ''));
+      alexSpeakBilingual(r.word.en, r.word.es, window._alexToken || token, ()=>{
+        alexSpeak('Repeat after me: ' + r.frase, 0.88, ()=>{ setBubble('🎤 Repítela tú: "' + r.frase + '"'); setBType(''); hablarCon(r); }, null, ()=>setOrb('speaking'));
+      }, ()=>setOrb('speaking'));
     };
-    if (conIntro) alexSpeak('Veamos qué aprendiste! Yo te enseño cada ejemplo que ya viste, y tú lo repites. Escucha!', 0.98, dila, 'es', ()=>setOrb('speaking'));
+    if (conIntro) alexSpeak('Veamos qué aprendiste! Te recuerdo cada palabra con su significado y su ejemplo, y tú lo repites. Escucha!', 0.98, dila, 'es', ()=>setOrb('speaking'));
     else dila();
   };
   const empezarTema = (t) => { if (!t.completo) return; setTema(t); setIdx(0); setFin(false); cargarReto(t, 0, true); };
@@ -582,8 +585,18 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel }) {
     const ok = wordHit || best >= (nivelIdx >= 4 ? 0.55 : 0.45);
     if (ok) {
       failsRef.current = 0;
-      setBType('ok'); setBubble('✅ ¡Perfecto! "' + frase + '" — ¡sigamos!'); setOrb('speaking');
-      alexSpeak('Perfect!', 0.9, ()=>avanzar(r.t, r.i), null, ()=>setOrb('speaking'));
+      // SIEMPRE felicita (con el nombre del estudiante) y recuerda el significado
+      const n = (nombre || '').trim() || 'campeón';
+      const praises = [
+        '¡Perfecto, ' + n + '! Significa: ' + w.es + '. ¡Sigamos!',
+        '¡Muy bien, ' + n + '! Eso es: ' + w.es + '. ¡Vamos con la siguiente!',
+        '¡Excelente, ' + n + '! ' + w.es + '. ¡Así se habla!',
+      ];
+      const pr = praises[r.i % praises.length];
+      setBType('ok'); setBubble('🎉 ' + pr + ' — "' + frase + '"'); setOrb('speaking');
+      alexSpeak('Perfect!', 0.9, ()=>{
+        alexSpeak(pr, 0.98, ()=>avanzar(r.t, r.i), 'es', ()=>setOrb('speaking'));
+      }, null, ()=>setOrb('speaking'));
     } else {
       // ENSEÑA paso a paso y da ánimos: mensaje según el intento → palabra DESPACIO → oración normal → escucha otra vez
       const f = ++failsRef.current; setFails(f); setBType('err');
@@ -615,8 +628,12 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel }) {
     rec.onerror = (e) => {
       window._alexListening=false; setListening(false); setOrb('idle');
       if (e.error==='no-speech') {
-        setBType('err'); setBubble('🔇 No te escuché. Otra vez: "' + r.frase + '"');
-        alexSpeak('No te escuché. Inténtalo otra vez.', 0.95, ()=>hablarCon(r), 'es', ()=>setOrb('speaking'));
+        // Silencio del estudiante: lo llama por su nombre, lo anima y le REPITE la enseñanza
+        const n = (nombre || '').trim();
+        setBType('err'); setBubble('🔇 ' + (n ? n + ', no' : 'No') + ' te escuché. Tranquilo, intentemos de nuevo: "' + r.frase + '"');
+        alexSpeak((n ? n + ', no' : 'No') + ' te escuché. Tranquilo, intentemos de nuevo. Escucha.', 0.96, ()=>{
+          alexSpeak('Repeat after me: ' + r.frase, 0.88, ()=>{ setBubble('🎤 Repítela tú: "' + r.frase + '"'); setBType(''); hablarCon(r); }, null, ()=>setOrb('speaking'));
+        }, 'es', ()=>setOrb('speaking'));
       } else if (e.error==='not-allowed') { setBType('err'); setBubble('🎤 Permite el micrófono en tu navegador y toca el botón.'); }
       else { setBType('err'); setBubble('🎤 Toca el botón 🎤 para responder.'); }
     };
@@ -3686,8 +3703,8 @@ const handleAuth = async(e) => {
           </div>
         </div>
       )}
-      {repasoOpen && <RepasoAlex token={token} temas={temasRepaso} nivel={nivel} onClose={()=>setRepasoOpen(false)}/>}
-      {todosOpen && <RepasoAlex token={token} temas={[temaTodos]} autoTema={temaTodos} titulo="🌟 Todos los temas" nivel={nivel} onClose={()=>setTodosOpen(false)}/>}
+      {repasoOpen && <RepasoAlex token={token} temas={temasRepaso} nivel={nivel} nombre={(user?.name||'').split(' ')[0]} onClose={()=>setRepasoOpen(false)}/>}
+      {todosOpen && <RepasoAlex token={token} temas={[temaTodos]} autoTema={temaTodos} titulo="🌟 Todos los temas" nivel={nivel} nombre={(user?.name||'').split(' ')[0]} onClose={()=>setTodosOpen(false)}/>}
       <div className="aq-bar" style={{background:'rgba(10,14,26,.45)',backdropFilter:'blur(22px) saturate(1.4)',WebkitBackdropFilter:'blur(22px) saturate(1.4)',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.8rem',borderBottom:'1px solid rgba(255,255,255,0.06)',position:'sticky',top:0,zIndex:100}}>
         <div style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}} onClick={()=>setScreen('home')}>
           <div style={{width:34,height:34,background:'linear-gradient(135deg,#6366f1,#8b5cf6,#d946ef)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.95rem',boxShadow:'0 0 16px rgba(99,102,241,.4)'}}>🎓</div>
