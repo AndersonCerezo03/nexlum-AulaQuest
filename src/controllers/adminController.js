@@ -199,6 +199,8 @@ const getStudent = function(req, res) {
           role: u.role,
           englishLevel: u.englishLevel,
           emailVerified: u.emailVerified,
+          isPremium: u.isPremium || false,
+          trialStart: u.createdAt,
           interviewUnlocked: u.interviewUnlocked || false,
           interviewRequestedAt: u.interviewRequestedAt || null,
           experiencePoints: u.experiencePoints || 0,
@@ -245,6 +247,11 @@ const updateStudent = function(req, res) {
   }
   if (typeof req.body.interviewUnlocked === 'boolean') {
     cambios.interviewUnlocked = req.body.interviewUnlocked;
+  }
+  if (typeof req.body.isPremium === 'boolean') {
+    // Acceso total: el admin lo activa cuando el alumno paga (sin límite diario,
+    // sin vencimiento de prueba y energía ilimitada)
+    cambios.isPremium = req.body.isPremium;
   }
 
   if (Object.keys(cambios).length === 0) {

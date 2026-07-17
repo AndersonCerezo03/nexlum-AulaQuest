@@ -263,8 +263,24 @@ async function alexSpeakBilingual(enText, esText, token, onEnd, onStart) {
       audio.play().catch(next); // si un audio falla, sigue con el resto
     };
 
-    // EN (apenas listo) → pausa → ES → pausa → EN otra vez
-    playOne(urlEn, async () => {
+    // EN (apenas listo) → pausa → ES → pausa → EN otra vez.
+    // Blindaje: si el clip EN falla al arrancar, se reintenta UNA vez antes de seguir —
+    // así la enseñanza NUNCA empieza en español (ej: números que sonaban "en español").
+    const playEnPrimero = (next) => {
+      if (mySeq !== _alexCallSeq || window._alexListening) { finish(); return; }
+      const audio = new Audio(urlEn);
+      _currentAudio = audio;
+      let reintento = false;
+      audio.onplay = () => {
+        fireStart();
+        const durMs = (isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 8) * 1000;
+        if (guard) clearTimeout(guard); guard = setTimeout(finish, durMs + 8000);
+      };
+      audio.onended = next;
+      audio.onerror = () => { if (!reintento) { reintento = true; setTimeout(()=>{ try { audio.currentTime = 0; audio.play().catch(next); } catch(e){ next(); } }, 250); } else next(); };
+      audio.play().catch(() => { if (!reintento) { reintento = true; setTimeout(()=>audio.play().catch(next), 300); } else next(); });
+    };
+    playEnPrimero(async () => {
       if (mySeq !== _alexCallSeq) { finish(); return; }
       const blobEs = await pEs;                          // normalmente ya está listo
       if (mySeq !== _alexCallSeq) { finish(); return; }
@@ -1817,6 +1833,24 @@ function AdminPanel({ token, user, onBack, onVerNivel }) {
       .catch(()=>{ setAccionBusy(false); setAccionMsg('❌ Error de conexion'); });
   };
 
+  // 💎 Acceso total (alumno que pagó): sin límite diario, sin prueba, energía ilimitada
+  const toggleAcceso = (id, valor) => {
+    setAccionBusy(true); setAccionMsg('');
+    fetch(API + '/api/admin/student/' + id, {
+      method:'PUT',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token },
+      body: JSON.stringify({ isPremium: valor })
+    })
+      .then(r=>r.json().then(d=>({ok:r.ok,d})))
+      .then(({ok,d})=>{
+        setAccionBusy(false);
+        if (!ok) { setAccionMsg('❌ ' + (d.msg||'No se pudo')); return; }
+        setAccionMsg(valor ? '💎 ACCESO TOTAL activado para este alumno' : '✅ Acceso total desactivado (vuelve a versión gratuita)');
+        setDetalle(prev=>({ ...prev, [id]: { ...(prev[id]||{}), isPremium: valor } }));
+      })
+      .catch(()=>{ setAccionBusy(false); setAccionMsg('❌ Error de conexion'); });
+  };
+
   const toggleEntrevista = (id, valor) => {
     setAccionBusy(true); setAccionMsg('');
     fetch(API + '/api/admin/student/' + id, {
@@ -2155,6 +2189,21 @@ function AdminPanel({ token, user, onBack, onVerNivel }) {
                                       <span>🕒 Ultima actividad: {fmtFecha(d.lastActive)}</span>
                                       <span>{d.emailVerified ? '✅ Correo confirmado' : '⚠️ Correo sin confirmar'}</span>
                                       <span>🏅 Niveles aprobados: {d.nivelesAprobados.length ? d.nivelesAprobados.join(', ') : 'ninguno'}</span>
+                                    </div>
+
+                                    {/* 💎 Acceso total (pago) — el admin desbloquea cuando el alumno paga */}
+                                    <div style={{display:'flex',alignItems:'center',gap:10,background:d.isPremium?'rgba(245,158,11,.08)':'rgba(255,255,255,.03)',border:'1px solid '+(d.isPremium?'rgba(245,158,11,.4)':'rgba(255,255,255,.1)'),borderRadius:10,padding:'10px 12px',marginBottom:10,flexWrap:'wrap'}}>
+                                      <span style={{fontSize:'1.05rem'}}>💎</span>
+                                      <div style={{flex:1,minWidth:160}}>
+                                        <div style={{fontSize:'.72rem',fontWeight:700,color:'#e2e8f0'}}>Acceso total (alumno que pagó)</div>
+                                        <div style={{fontSize:'.62rem',color:d.isPremium?'#fbbf24':'#94a3b8'}}>
+                                          {d.isPremium ? '💎 ACTIVO — sin límite diario, sin vencimiento y energía ilimitada' : '🔒 Versión gratuita — 1 tema/día y prueba de 10 días'}
+                                        </div>
+                                      </div>
+                                      <button onClick={()=>toggleAcceso(d._id, !d.isPremium)} disabled={accionBusy}
+                                        style={{background:d.isPremium?'rgba(239,68,68,.12)':'linear-gradient(135deg,#f59e0b,#d97706)',color:d.isPremium?'#f87171':'#fff',border:d.isPremium?'1px solid rgba(239,68,68,.3)':'none',borderRadius:8,padding:'8px 16px',fontSize:'.68rem',fontWeight:700,cursor:accionBusy?'wait':'pointer',fontFamily:"'Poppins',sans-serif",whiteSpace:'nowrap'}}>
+                                        {d.isPremium ? 'Quitar acceso' : '💎 Activar (pagó)'}
+                                      </button>
                                     </div>
 
                                     {/* Acceso a Entrevistas con IA */}
