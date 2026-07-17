@@ -538,7 +538,7 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel, nombre }) 
     }
     if (!frase) { frase = w.en; fraseEs = w.es; }
     // r lleva el tema y el índice REALES: el avance nunca depende de estado congelado (fix del bucle "me la repite")
-    const r = { word:w, frase, fraseEs, t, i };
+    const r = { word:w, frase, fraseEs, explic: (ej && ej.explicacion) ? String(ej.explicacion) : '', t, i };
     setReto(r);
     ttsBlob(w.en, 'en', tok); ttsBlob(w.es, 'es', tok);           // palabra + significado
     ttsBlob('Repeat after me: ' + frase, 'en', tok);   // precarga: enseñanza de esta palabra…
@@ -582,21 +582,29 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel, nombre }) 
     // ACEPTA generoso: decir bien la palabra clave cuenta en TODOS los niveles
     // (el reconocedor de voz es ruidoso; el tutor enseña, NO bloquea). También
     // acepta la oración casi completa aunque la palabra se transcriba distinto.
-    const ok = wordHit || best >= (nivelIdx >= 4 ? 0.55 : 0.45);
-    if (ok) {
+    // Se evalúa TODA la oración: mayoría de la oración dicha = correcto;
+    // solo la palabra clave = re-enseña la oración completa (y a la 3ª acepta para no trabar)
+    const umbral = nivelIdx >= 4 ? 0.65 : 0.55;
+    const fraseOk = best >= umbral || (wordHit && best >= 0.45);
+    const soloPalabra = wordHit && !fraseOk;
+    const n = (nombre || '').trim() || 'campeón';
+    if (fraseOk || (soloPalabra && failsRef.current >= 2)) {
       failsRef.current = 0;
-      // SIEMPRE felicita (con el nombre del estudiante) y recuerda el significado
-      const n = (nombre || '').trim() || 'campeón';
-      const praises = [
-        '¡Perfecto, ' + n + '! Significa: ' + w.es + '. ¡Sigamos!',
-        '¡Muy bien, ' + n + '! Eso es: ' + w.es + '. ¡Vamos con la siguiente!',
-        '¡Excelente, ' + n + '! ' + w.es + '. ¡Así se habla!',
-      ];
-      const pr = praises[r.i % praises.length];
-      setBType('ok'); setBubble('🎉 ' + pr + ' — "' + frase + '"'); setOrb('speaking');
+      // SIEMPRE felicita con el nombre y explica TODA la oración que acaba de pronunciar
+      const abre = ['¡Perfecto, ' + n + '!', '¡Muy bien, ' + n + '!', '¡Excelente, ' + n + '!'][r.i % 3];
+      const pr = abre + ' Dijiste: ' + (r.fraseEs || w.es) + '.' + (r.explic ? ' ' + r.explic : '') + ' ¡Sigamos!';
+      setBType('ok'); setBubble('🎉 ' + abre + ' "' + frase + '" = ' + (r.fraseEs || w.es) + (r.explic ? ' · 📘 ' + r.explic : ''));
+      setOrb('speaking');
       alexSpeak('Perfect!', 0.9, ()=>{
         alexSpeak(pr, 0.98, ()=>avanzar(r.t, r.i), 'es', ()=>setOrb('speaking'));
       }, null, ()=>setOrb('speaking'));
+    } else if (soloPalabra) {
+      // Dijo bien la palabra pero NO toda la oración → vuelve y le enseña la oración completa
+      const f = ++failsRef.current; setFails(f); setBType('err');
+      setBubble('🙌 ¡Bien la palabra, ' + n + '! Ahora TODA la oración: "' + frase + '"' + (r.fraseEs ? ' — ' + r.fraseEs : ''));
+      alexSpeak('Bien la palabra, ' + n + '. Ahora dila completa. Escucha y repite conmigo.', 0.98, ()=>{
+        alexSpeak(frase, 0.85, ()=>{ setBubble('🎤 La oración completa: "' + frase + '"'); setBType(''); hablarCon(r); }, null, ()=>setOrb('speaking'));
+      }, 'es', ()=>setOrb('speaking'));
     } else {
       // ENSEÑA paso a paso y da ánimos: mensaje según el intento → palabra DESPACIO → oración normal → escucha otra vez
       const f = ++failsRef.current; setFails(f); setBType('err');
