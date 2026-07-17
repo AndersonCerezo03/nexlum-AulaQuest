@@ -542,6 +542,7 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel, nombre }) 
     setReto(r);
     ttsBlob(w.en, 'en', tok); ttsBlob(w.es, 'es', tok);           // palabra + significado
     ttsBlob('Repeat after me: ' + frase, 'en', tok);   // precarga: enseñanza de esta palabra…
+    ttsBlob('Perfect! You said: ' + frase, 'en', tok); // …la felicitación con lo que dijo…
     ttsBlob(w.en, 'slow', tok);                        // …su corrección lenta…
     const nx = t.words[i+1]; if (nx) { ttsBlob(nx.en, 'en', tok); ttsBlob(nx.es, 'es', tok); }   // …y adelanta la siguiente
     ensenar(r, conIntro);
@@ -595,7 +596,8 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel, nombre }) 
       const pr = abre + ' Dijiste: ' + (r.fraseEs || w.es) + '.' + (r.explic ? ' ' + r.explic : '') + ' ¡Sigamos!';
       setBType('ok'); setBubble('🎉 ' + abre + ' "' + frase + '" = ' + (r.fraseEs || w.es) + (r.explic ? ' · 📘 ' + r.explic : ''));
       setOrb('speaking');
-      alexSpeak('Perfect!', 0.9, ()=>{
+      // Le repite en inglés TODO lo que acaba de decir, y luego se lo explica en español
+      alexSpeak('Perfect! You said: ' + frase, 0.9, ()=>{
         alexSpeak(pr, 0.98, ()=>avanzar(r.t, r.i), 'es', ()=>setOrb('speaking'));
       }, null, ()=>setOrb('speaking'));
     } else if (soloPalabra) {
