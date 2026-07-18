@@ -3662,11 +3662,14 @@ const handleAuth = async(e) => {
   // ✨ Repaso (A1): temas del nivel con su estado (cada tema completado desbloquea su rutina de repaso)
   const temasRepaso = TOPICS.filter(t => (vocabData[t.id]||[]).length > 0)
     .map(t => ({ id:t.id, name:t.name, icon:t.icon, words: vocabData[t.id]||[], completo: esAdmin || !!progTemas[t.id]?.completo }));
-  // "Todos los temas" se desbloquea al completar TODAS las lecciones del nivel
-  const todosTemasCompletos = esAdmin || (TOPICS.length > 0 && TOPICS.every(t => progTemas[t.id]?.completo));
+  // 🌟 "Todos los temas": se desbloquea con 3 temas completados y juega SOLO con lo aprendido.
+  // Crece solo: más temas completados = más palabras entran al juego. El admin lo ve siempre.
+  const todosDesbloqueado = esAdmin || temasHechosNivel >= 3;
   const temaTodos = (()=>{ const seen = new Set(); return { id:'__todos', name:'Todos los temas', icon:'🌟', completo:true,
-    words: TOPICS.flatMap(t => (vocabData[t.id]||[]).map(w => ({ ...w, icon: t.icon }))).filter(w => { if (seen.has(w.en)) return false; seen.add(w.en); return true; }) }; })();
-  let bellOn = false; try { bellOn = todosTemasCompletos && localStorage.getItem('aq_bell_todos_'+nivel) !== '1'; } catch {}
+    words: TOPICS.filter(t => esAdmin || progTemas[t.id]?.completo)
+      .flatMap(t => (vocabData[t.id]||[]).map(w => ({ ...w, icon: t.icon })))
+      .filter(w => { if (seen.has(w.en)) return false; seen.add(w.en); return true; }) }; })();
+  let bellOn = false; try { bellOn = todosDesbloqueado && localStorage.getItem('aq_bell_todos_'+nivel) !== '1'; } catch {}
 
   if (screen2==='quiz') return (
     <LevelQuiz
@@ -4011,17 +4014,17 @@ const handleAuth = async(e) => {
                     <div style={{flex:1}}><div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9'}}>Repaso de temas aprendidos</div><div style={{fontSize:'.65rem',color:'#94a3b8'}}>Solo lo que ya aprendiste</div></div>
                     <span style={{color:'#475569',fontSize:'.8rem'}}>›</span>
                   </div>
-                  <div onClick={()=>{ if(!todosTemasCompletos) return; try{localStorage.setItem('aq_bell_todos_'+nivel,'1');}catch(e){} setPractMenu(false); setTodosOpen(true); }}
-                    onMouseEnter={e=>{ if(todosTemasCompletos) e.currentTarget.style.background='rgba(255,255,255,.06)'; }} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
-                    style={{display:'flex',alignItems:'center',gap:11,padding:10,borderRadius:12,cursor:todosTemasCompletos?'pointer':'not-allowed',transition:'background .12s',opacity:todosTemasCompletos?1:.55}}>
+                  <div onClick={()=>{ if(!todosDesbloqueado) return; try{localStorage.setItem('aq_bell_todos_'+nivel,'1');}catch(e){} setPractMenu(false); setTodosOpen(true); }}
+                    onMouseEnter={e=>{ if(todosDesbloqueado) e.currentTarget.style.background='rgba(255,255,255,.06)'; }} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
+                    style={{display:'flex',alignItems:'center',gap:11,padding:10,borderRadius:12,cursor:todosDesbloqueado?'pointer':'not-allowed',transition:'background .12s',opacity:todosDesbloqueado?1:.55}}>
                     <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#f59e0b,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',position:'relative'}}>🌟
                       {bellOn && <span style={{position:'absolute',top:-4,right:-4,width:14,height:14,borderRadius:'50%',background:'#ef4444',border:'1.5px solid #0a0e1a',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.5rem',boxShadow:'0 0 8px rgba(239,68,68,.7)'}}>🔔</span>}
                     </div>
                     <div style={{flex:1}}>
                       <div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9',display:'flex',alignItems:'center',gap:6}}>Todos los temas{bellOn && <span style={{fontSize:'.52rem',color:'#fff',background:'#ef4444',borderRadius:20,padding:'1px 7px',fontWeight:800}}>NUEVO</span>}</div>
-                      <div style={{fontSize:'.65rem',color:'#94a3b8'}}>{todosTemasCompletos?'Juego: preguntas, V/F e imágenes 🎲':'🔒 Se desbloquea al completar todas las lecciones'}</div>
+                      <div style={{fontSize:'.65rem',color:'#94a3b8'}}>{todosDesbloqueado?'Juego con lo aprendido: preguntas, V/F 🎲':'🔒 Se desbloquea al completar 3 temas'}</div>
                     </div>
-                    <span style={{color:'#475569',fontSize:'.8rem'}}>{todosTemasCompletos?'›':'🔒'}</span>
+                    <span style={{color:'#475569',fontSize:'.8rem'}}>{todosDesbloqueado?'›':'🔒'}</span>
                   </div>
                   <div style={{height:1,background:'rgba(255,255,255,.07)',margin:'6px 8px'}}/>
                   <div style={{fontSize:'.6rem',color:'#64748b',fontWeight:700,letterSpacing:'.08em',padding:'6px 10px 8px'}}>RECURSOS</div>
