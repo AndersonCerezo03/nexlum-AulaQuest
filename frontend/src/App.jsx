@@ -712,7 +712,7 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel, nombre }) 
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
           <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
             <span style={{fontSize:'.8rem',fontWeight:700,color:'#6366f1',letterSpacing:'.08em'}}>MR. ALEX</span>
-            <span style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>{titulo || (tema ? (getRutina(tema).emoji + ' ' + getRutina(tema).titulo) : '🧠 Repaso de los temas aprendidos')}</span>
+            <span style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>{titulo || (tema ? (getRutina(tema).emoji + ' ' + getRutina(tema).titulo) : '🗣️ Pronunciación por tema')}</span>
             {tema && !fin && <span style={{background:'rgba(16,185,129,.15)',color:'#34d399',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>{Math.min(idx+1, tema.words.length)}/{tema.words.length}</span>}
           </div>
           <button onClick={cerrar} style={{background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.25)',color:'#ef4444',width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:12}}>✕</button>
@@ -865,7 +865,7 @@ function TodosQuiz({ token, words, nivel, nombre, onClose }) {
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
           <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
             <span style={{fontSize:'.8rem',fontWeight:700,color:'#f59e0b',letterSpacing:'.08em'}}>MR. ALEX</span>
-            <span style={{background:'rgba(245,158,11,.15)',color:'#fbbf24',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>🌟 Todos los temas · {nivel}</span>
+            <span style={{background:'rgba(245,158,11,.15)',color:'#fbbf24',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>🎲 Juego rápido · {nivel}</span>
             {!fin && !cargando && <span style={{background:'rgba(16,185,129,.15)',color:'#34d399',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:700}}>Ronda {Math.min(idx+1, rounds.length)}/{rounds.length}</span>}
             {streak >= 2 && !fin && <span style={{background:'rgba(239,68,68,.15)',color:'#f87171',padding:'2px 8px',borderRadius:50,fontSize:'.62rem',fontWeight:800}}>🔥 Racha {streak}</span>}
           </div>
@@ -4010,19 +4010,19 @@ const handleAuth = async(e) => {
                   <div onClick={()=>{ setPractMenu(false); setRepasoOpen(true); }}
                     onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
                     style={{display:'flex',alignItems:'center',gap:11,padding:10,borderRadius:12,cursor:'pointer',transition:'background .12s'}}>
-                    <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem'}}>🧠</div>
-                    <div style={{flex:1}}><div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9'}}>Repaso de temas aprendidos</div><div style={{fontSize:'.65rem',color:'#94a3b8'}}>Solo lo que ya aprendiste</div></div>
+                    <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#8b5cf6,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem'}}>🗣️</div>
+                    <div style={{flex:1}}><div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9'}}>Pronunciación por tema</div><div style={{fontSize:'.65rem',color:'#94a3b8'}}>Mr. Alex te enseña y tú repites</div></div>
                     <span style={{color:'#475569',fontSize:'.8rem'}}>›</span>
                   </div>
                   <div onClick={()=>{ if(!todosDesbloqueado) return; try{localStorage.setItem('aq_bell_todos_'+nivel,'1');}catch(e){} setPractMenu(false); setTodosOpen(true); }}
                     onMouseEnter={e=>{ if(todosDesbloqueado) e.currentTarget.style.background='rgba(255,255,255,.06)'; }} onMouseLeave={e=>e.currentTarget.style.background='transparent'}
                     style={{display:'flex',alignItems:'center',gap:11,padding:10,borderRadius:12,cursor:todosDesbloqueado?'pointer':'not-allowed',transition:'background .12s',opacity:todosDesbloqueado?1:.55}}>
-                    <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#f59e0b,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',position:'relative'}}>🌟
+                    <div style={{width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,#f59e0b,#d946ef)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',position:'relative'}}>🎲
                       {bellOn && <span style={{position:'absolute',top:-4,right:-4,width:14,height:14,borderRadius:'50%',background:'#ef4444',border:'1.5px solid #0a0e1a',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.5rem',boxShadow:'0 0 8px rgba(239,68,68,.7)'}}>🔔</span>}
                     </div>
                     <div style={{flex:1}}>
-                      <div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9',display:'flex',alignItems:'center',gap:6}}>Todos los temas{bellOn && <span style={{fontSize:'.52rem',color:'#fff',background:'#ef4444',borderRadius:20,padding:'1px 7px',fontWeight:800}}>NUEVO</span>}</div>
-                      <div style={{fontSize:'.65rem',color:'#94a3b8'}}>{todosDesbloqueado?'Juego con lo aprendido: preguntas, V/F 🎲':'🔒 Se desbloquea al completar 3 temas'}</div>
+                      <div style={{fontWeight:700,fontSize:'.8rem',color:'#f1f5f9',display:'flex',alignItems:'center',gap:6}}>Juego rápido{bellOn && <span style={{fontSize:'.52rem',color:'#fff',background:'#ef4444',borderRadius:20,padding:'1px 7px',fontWeight:800}}>NUEVO</span>}</div>
+                      <div style={{fontSize:'.65rem',color:'#94a3b8'}}>{todosDesbloqueado?'Preguntas y V/F con todo lo aprendido':'🔒 Se desbloquea al completar 3 temas'}</div>
                     </div>
                     <span style={{color:'#475569',fontSize:'.8rem'}}>{todosDesbloqueado?'›':'🔒'}</span>
                   </div>
