@@ -175,7 +175,7 @@ function ttsBlob(text, lang, token) {
   return p;
 }
 // Precargar el audio (inglés + español + versión lenta) de una palabra
-function prefetchWord(w, token) { if (w && token) { ttsBlob(w.en, 'en', token); ttsBlob(w.es, 'es', token); ttsBlob(w.en, 'slow', token); } }
+function prefetchWord(w, token) { if (w && token) { ttsBlob(w.en, 'en', token); ttsBlob('significa: ' + w.es, 'es', token); ttsBlob(w.en, 'slow', token); } }
 
 // Mensajes de corrección suave cuando el alumno pronuncia mal (se precargan)
 const ALEX_CORRECCION = [
@@ -276,9 +276,23 @@ async function alexSpeakBilingual(enText, esText, token, onEnd, onStart) {
         const durMs = (isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 8) * 1000;
         if (guard) clearTimeout(guard); guard = setTimeout(finish, durMs + 8000);
       };
+      // Si el mp3 en inglés no puede sonar, se dice en inglés con la voz del navegador
+      // ANTES de continuar: la enseñanza JAMÁS arranca en español.
+      const inglesSiOSi = () => {
+        try {
+          if (window.speechSynthesis) {
+            const u = new SpeechSynthesisUtterance(enText);
+            u.lang = 'en-US'; u.rate = 0.75; u.pitch = 1.0;
+            u.onstart = fireStart; u.onend = next; u.onerror = next;
+            window.speechSynthesis.speak(u);
+            return;
+          }
+        } catch (e) {}
+        next();
+      };
       audio.onended = next;
-      audio.onerror = () => { if (!reintento) { reintento = true; setTimeout(()=>{ try { audio.currentTime = 0; audio.play().catch(next); } catch(e){ next(); } }, 250); } else next(); };
-      audio.play().catch(() => { if (!reintento) { reintento = true; setTimeout(()=>audio.play().catch(next), 300); } else next(); });
+      audio.onerror = () => { if (!reintento) { reintento = true; setTimeout(()=>{ try { audio.currentTime = 0; audio.play().catch(inglesSiOSi); } catch(e){ inglesSiOSi(); } }, 250); } else inglesSiOSi(); };
+      audio.play().catch(() => { if (!reintento) { reintento = true; setTimeout(()=>audio.play().catch(inglesSiOSi), 300); } else inglesSiOSi(); });
     };
     playEnPrimero(async () => {
       if (mySeq !== _alexCallSeq) { finish(); return; }
@@ -349,8 +363,10 @@ function alexSpeak(text, rate, onEnd, lang, onStart) {
       clearTimeout(guard); guard = setTimeout(finish, durMs + 5000);
     };
     audio.onended = finish;
-    audio.onerror = finish;
-    audio.play().catch(finish);
+    // Si el mp3 no puede sonar, lo dice la voz del navegador en el idioma correcto
+    // en vez de saltarse la línea (Mr. Alex nunca se queda callado ni cambia de idioma).
+    audio.onerror = speakWS;
+    audio.play().catch(speakWS);
   };
 
   const token = window._alexToken || '';
@@ -572,18 +588,18 @@ function RepasoAlex({ token, temas, onClose, autoTema, titulo, nivel, nombre }) 
     const r = { word:w, frase, fraseEs, explic, abre, praise, t, i };
     setReto(r);
     ttsBlob(praise, 'es', tok);                        // felicitación en español lista ANTES de que hable
-    ttsBlob(w.en, 'en', tok); ttsBlob(w.es, 'es', tok);           // palabra + significado
+    ttsBlob(w.en, 'en', tok); ttsBlob('significa: ' + w.es, 'es', tok);   // palabra + "significa: …"
     ttsBlob('Repeat after me: ' + frase, 'en', tok);   // precarga: enseñanza de esta palabra…
     ttsBlob('Perfect! You said: ' + frase, 'en', tok); // …la felicitación con lo que dijo…
     ttsBlob(w.en, 'slow', tok);                        // …su corrección lenta…
-    const nx = t.words[i+1]; if (nx) { ttsBlob(nx.en, 'en', tok); ttsBlob(nx.es, 'es', tok); }   // …y adelanta la siguiente
+    const nx = t.words[i+1]; if (nx) { ttsBlob(nx.en, 'en', tok); ttsBlob('significa: ' + nx.es, 'es', tok); }   // …y adelanta la siguiente
     ensenar(r, conIntro);
   };
   // Mr. Alex enseña COMPLETO: palabra (EN) → significado (ES) → palabra otra vez → oración de ejemplo. Y queda escuchando.
   const ensenar = (r, conIntro) => {
     const dila = () => {
       setBubble('🗣️ ' + r.word.en + ' = ' + r.word.es + ' — "' + r.frase + '"' + (r.fraseEs ? ' (' + r.fraseEs + ')' : ''));
-      alexSpeakBilingual(r.word.en, r.word.es, window._alexToken || token, ()=>{
+      alexSpeakBilingual(r.word.en, 'significa: ' + r.word.es, window._alexToken || token, ()=>{
         alexSpeak('Repeat after me: ' + r.frase, 0.88, ()=>{ setBubble('🎤 Repítela tú: "' + r.frase + '"'); setBType(''); hablarCon(r); }, null, ()=>setOrb('speaking'));
       }, ()=>setOrb('speaking'));
     };
@@ -3512,7 +3528,7 @@ const handleAuth = async(e) => {
     setBubble('📖 ' + w.en + ' = ' + w.es + ' — Escucha y repite!'); setBubbleType('');
     setOrbState('thinking');
     // Palabra (EN→ES→EN) y luego Mr. Alex la enseña EN CONTEXTO: oración real + cómo se usa
-    alexSpeakBilingual(w.en, w.es, tok, async ()=>{
+    alexSpeakBilingual(w.en, 'significa: ' + w.es, tok, async ()=>{
       const ej = await pEj.catch(() => null);
       const alListening = () => { setOrbState('listening'); setBubble('🎤 Di: ' + w.en + ' (' + w.es + ')'); };
       if (ej && ej.frase) {
